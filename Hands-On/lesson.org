@@ -1,0 +1,22 @@
+Lessons from Hands On Machine Learning with Scikit-Learn and Tensorflow.
+
+
+* Chapter 4
+
+Ridge regression just means regularization, with a term for the theta
+added to the cost function
+
+Lasso regression is regularization with an abolute value of the theta
+as the cost, added to the cost function. This then seeks to eliminate
+features entirely.
+
+Elastic net is a combination of the two regularization terms, which is
+absolute value of the theta, and the square of the thetas.
+
+
+* Chapter 9
+Tensorflow does all its processing in C/C++. The Python code just sets up
+the graph and then the graph is executed.
+
+
+
