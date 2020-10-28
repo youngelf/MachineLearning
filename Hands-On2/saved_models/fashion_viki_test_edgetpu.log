@@ -1,0 +1,9 @@
+Edge TPU Compiler version 14.1.317412892
+Input: fashion_viki_test.tflite
+Output: fashion_viki_test_edgetpu.tflite
+
+Operator                       Count      Status
+
+QUANTIZE                       2          Mapped to Edge TPU
+SOFTMAX                        1          Mapped to Edge TPU
+FULLY_CONNECTED                3          Mapped to Edge TPU
