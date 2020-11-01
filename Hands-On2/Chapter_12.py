@@ -32,11 +32,11 @@ from tensorflow import keras
 
 # Creating a new loss function allows you to store the config, load
 # from a config and apply ('call') the method.
-# 
+#
 # Initializers, Regularizers, Constraings can be overwriten. A
 # kernel_constraint allows you to overwrite the edge weights.
-# 
-# 
+#
+#
 
 # Sanity check on core dependencies: things are working well if this
 # prints out the version
@@ -45,7 +45,7 @@ print("Keras version ", keras.__version__)
 
 # "Loss" functions are used during training, and their gradient is
 # what is optimized.
-# 
+#
 # By contrast, "metrics" are used to evaluate a model, they can be
 # anything arbitrary. They have no expectation of having nonzero
 # values or existence of gradients.
@@ -66,7 +66,7 @@ class HuberLoss(keras.losses.Loss):
         squared_loss = tf.square(error) / 2
         linear_loss = self.threshold * tf.abs(error) - self.threshold ** 2 / 2
         return tf.where(is_small_error, squared_loss, linear_loss)
-    
+
     def get_config(self):
         """Called when model is saved to preserve existing config. This class
            will save its parent class' config too."""
@@ -75,7 +75,7 @@ class HuberLoss(keras.losses.Loss):
 
 
 # Here are other custom functions:
-# 
+#
 
 def activation_softplus(z):
     "Used to return a probability of seeing this output"
@@ -102,7 +102,7 @@ def constraint_weights(weights):
 # keras.constraints.Constraint appropriately.  The activation function
 # usually has nothing to save, so if you want to have a parameter for
 # the activation, you can create a new layer type.
-# 
+#
 # Here's an example of extending just one of them, the Regularizer.
 class VikiL1(keras.regularizers.Regularizer):
     def __init__(self, factor):
@@ -112,12 +112,12 @@ class VikiL1(keras.regularizers.Regularizer):
     def __call__(self, weights):
         "Apply this regularizer with the weights at this layer"
         return tf.reduce_sum(tf.abs(self.factor * weights))
-    
+
     def get_config(self):
         "Returns the configuration of this class for application later"
         # We don't look up the parent's config, because it has none.
         return {"factor": self.factor}
-    
+
 
 
 # A custom layer can be implemented that does add_weight() for all the
@@ -155,7 +155,7 @@ class VikiNormalizedLayer(keras.layers.Layer):
         # is matrix multiplication.
         return (self.alpha * (inputs - mean) / (std_dev + eps)) + self.beta
 
-    
+
     def build(self, batch_input_shape):
         # Define two trainable weights: alpha and beta, which are the
         # same shape as the previous out and float32.
