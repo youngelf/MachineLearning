@@ -132,3 +132,54 @@ class VikiL1(keras.regularizers.Regularizer):
 # elsewhere and elsewhen.
 
 
+# Create my Normalization Layer
+
+class VikiNormalizedLayer(keras.layers.Layer):
+    def __init__(self, activation=None, **kwargs):
+        # The general initialization routine, parse the normal args
+        # and remember the units.
+        super().__init__(**kwargs)
+        # self.units = units
+        self.activation = keras.activations.get(activation)
+
+    def call(self, inputs):
+        # Perform layer normalization here
+        mean, variance = tf.nn.moments(inputs, axes=-1, keepdims=True)
+        std_dev = tf.math.sqrt(variance)
+
+        # Eps is a small smoothing factor, selected to be everyones
+        # favorite: 0.001 here.
+        eps = 0.001
+        # * here is element-wise multiplication that gets written as
+        # tf.math.multiply(). That is different from tf.mult() which
+        # is matrix multiplication.
+        return (self.alpha * (inputs - mean) / (std_dev + eps)) + self.beta
+
+    
+    def build(self, batch_input_shape):
+        # Define two trainable weights: alpha and beta, which are the
+        # same shape as the previous out and float32.
+        self.alpha = self.add_weight(name="alpha", shape=[batch_input_shape[-1]],
+                                     initializer="ones")
+        print ("shape = ", batch_input_shape[-1])
+        self.beta = self.add_weight(name="beta", shape=[batch_input_shape[-1]],
+                                    initializer="zeros")
+
+
+# This is how to test out the normalization layer
+data = tf.constant(np.arange(10).reshape(5, 2) * 10, dtype=tf.float32)
+print(data)
+
+# Create the usual Keras LayerNormalization
+layer = tf.keras.layers.LayerNormalization(axis=1)
+
+print ("Using LayerNormalization")
+output = layer(data)
+print(output)
+
+# Create my version of LayerNormalization
+layer = VikiNormalizedLayer()
+
+print ("Using VikiNormalizedLayer")
+output = layer(data)
+print(output)
