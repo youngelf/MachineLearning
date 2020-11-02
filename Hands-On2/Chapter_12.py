@@ -183,3 +183,86 @@ layer = VikiNormalizedLayer()
 print ("Using VikiNormalizedLayer")
 output = layer(data)
 print(output)
+# Based on that, let's create a model using my Normalization layer
+
+
+def create_keras_classifier_model(n_classes=100):
+    """Keras multinomial logistic regression creation model
+ 
+    Args:
+        n_classes(int): Number of classes to be classified
+ 
+    Returns:
+        Compiled keras model
+ 
+    """
+    # create model
+    model = keras.models.Sequential()
+    
+    # The input: we get 32x32 pixels, each with 3 colors (rgb)
+    model.add(keras.layers.Flatten(input_shape=[32,32,3]))
+    # Then the hidden layers, fully connected (100 by default)
+    for i in range(3):
+        model.add(keras.layers.Dense(
+            n_classes, 
+            activation="elu",
+            kernel_initializer=tf.keras.initializers.HeNormal(),
+            kernel_regularizer=tf.keras.regularizers.l2(0.01),
+        ))
+        model.add(VikiNormalizedLayer())
+    # Now add the output layer: 10 classes in CIFAR10, so 10 outputs.
+    model.add(keras.layers.Dense(10, activation="softmax"))
+
+    # print(model.summary())
+    # Compile model
+    nadam = keras.optimizers.Nadam(learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+
+    model.compile(
+        loss="sparse_categorical_crossentropy", 
+        optimizer=nadam,
+        metrics=["accuracy"]
+    )
+    return model
+
+# Clear the errors, in case we observe them in the long run.
+viki_stack_trace = ''
+
+# Let's load the data
+def 
+(X, y), (testX, testy) = keras.datasets.cifar10.load_data()
+
+# Split into training and testing
+X_train, X_valid = X[:40000] / 255.0, X[40000:] / 255.0
+y = y.reshape(50000)
+testy.reshape(10000)
+
+y_train, y_valid = y[:40000]        , y[40000:]
+
+print("Validation: ", X_valid.shape)
+print("Training: ", X_train.shape)
+print("Labels validation: ", y_valid.shape)
+print("Labels training: ", y_train.shape)
+
+print("Test: ", testX.shape)
+print("Labels test: ", testy.shape)
+
+
+from sklearn.base import clone
+
+
+# Got to remember them. mm_bn is the model with Batch normalization
+mm_bn = create_keras_classifier_model(100)
+print ("Model built: ", mm_bn)
+
+history_bn = mm_bn.fit(X_train, y_train, epochs=10, verbose=0,
+                 batch_size=32,
+                 validation_data=(X_valid, y_valid))
+
+import pandas as pd
+pd.DataFrame(history_bn.history).plot(figsize=(8,5))
+plt.grid(True)
+plt.gca().set_ylim(0,1) # Y axis set to [0,1]
+plt.show()
+                       
+# Save the plot of loss history.
+plt.savefig('VikiNormTraining.png')
