@@ -206,11 +206,11 @@ estimator = keras.wrappers.scikit_learn.KerasClassifier(
 simplest = twenty_dense(100)
 print ("Model built: ", simplest)
 
-def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0):
+def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, showFig=False):
     """ Fit a model provided here with number of epochs, and verbosity
 
     Call with:
-    fit("simplest", simplest, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0)
+    fit("simplest", simplest, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, showFig=False)
     same as:
     fit("simplest", simplest, X_train, y_train, X_valid, y_valid)
 
@@ -221,15 +221,18 @@ def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0):
     """
 
     # Fit a model, and train it.
-    history = model.fit(X_train, y_train, epochs=30, verbose=0,
+    history = model.fit(X_train, y_train, epochs=epochs, verbose=verbose,
                         validation_data=(X_valid, y_valid))
 
     # Now plot the history to file
     pd.DataFrame(history.history).plot(figsize=(8,5))
     plt.grid(True)
     plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-    plt.show()
-    plt.savefig('images/' + name + '.png')
+
+    if (showFig):
+        plt.show()
+    else:
+        plt.savefig('images/' + name + '.png')
 
     return history
 
@@ -273,8 +276,9 @@ def flattened_model(n_classes=100, normalization=False, dropout_rate=-1):
     # create model
     model = keras.models.Sequential()
 
-    # The input: we get 32x32 pixels, each with 3 colors (rgb). StandardScalar wants the dimensions flattened,
-    # so now this gets the input directly.
+    # The input: we get 32x32 pixels, each with 3 colors
+    # (rgb). StandardScalar wants the dimensions flattened, so now
+    # this gets the input directly.
     model.add(keras.layers.Flatten(input_shape=[3072]))
     # Batch normalization after the input output.
     model.add(keras.layers.BatchNormalization())
@@ -298,7 +302,8 @@ def flattened_model(n_classes=100, normalization=False, dropout_rate=-1):
 
     # print(model.summary())
     # Compile model
-    nadam = keras.optimizers.Nadam(learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+    nadam = keras.optimizers.Nadam(
+        learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
 
     model.compile(
         loss="sparse_categorical_crossentropy",
@@ -306,9 +311,6 @@ def flattened_model(n_classes=100, normalization=False, dropout_rate=-1):
         metrics=["accuracy"]
     )
     return model
-
-# Got to remember them. mm_bn is the model with Batch normalization
-mm_selu = create_keras_classifier_model(100)
 
 def standard_scale(X_train, X_valid, testX):
     """Performs standard scaling on the data, which requires flattening
@@ -329,9 +331,4 @@ def standard_scale(X_train, X_valid, testX):
     testX_ss = scaler.transform(testX_reshape)
 
     return X_train_ss, X_valid_ss, testX_ss
-
-history_selu = mm_selu.fit(X_train_ss, y_train, epochs=100, verbose=0,
-                               batch_size=32,
-                               validation_data=(X_valid_ss, y_valid))
-
 

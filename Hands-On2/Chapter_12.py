@@ -263,6 +263,6 @@ pd.DataFrame(history_bn.history).plot(figsize=(8,5))
 plt.grid(True)
 plt.gca().set_ylim(0,1) # Y axis set to [0,1]
 plt.show()
-                       
+
 # Save the plot of loss history.
 plt.savefig('VikiNormTraining.png')
