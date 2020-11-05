@@ -280,8 +280,14 @@ def flattened_model(n_classes=100, normalization=False, dropout_rate=-1):
     # (rgb). StandardScalar wants the dimensions flattened, so now
     # this gets the input directly.
     model.add(keras.layers.Flatten(input_shape=[3072]))
-    # Batch normalization after the input output.
-    model.add(keras.layers.BatchNormalization())
+
+    if (dropout_rate > 0):
+        # Apply dropout and then normalize
+        keras.layers.Dropout(rate=dropout_rate)
+
+    if (normalization or dropout_rate > 0):
+        # Batch normalization after the input output.
+        model.add(keras.layers.BatchNormalization())
 
     # Then the hidden layers, fully connected (100 by default)
     for i in range(20):
@@ -331,4 +337,109 @@ def standard_scale(X_train, X_valid, testX):
     testX_ss = scaler.transform(testX_reshape)
 
     return X_train_ss, X_valid_ss, testX_ss
+
+
+
+
+# Get how well a model works
+def model_quality(model, testX_reshape, testy):
+    """ Calculate the quality of a flattened model
+
+    Call with:
+    model_quality(scaled, testX_reshape, testy)
+    """
+
+    # Calculate probabilities of each class
+    y_pred = mm_drop.predict(testX_reshape)
+
+    # Find the highest probability class
+    prediction = np.argmax(y_pred_nomc, axis=1)
+
+    # Now compute the accuracy
+    return accuracy_score(prediction, testy)
+
+
+# Monte-Carlo stacking of a model.
+def stacked_model(model, testX_reshape, testy, iterations=100):
+    """Calculate the predictions for a monte carlo version of the mode
+
+    Call with:
+    stacked_model(scaled, testX_reshape, testy, iterations=30)
+    """
+
+    # The probability of each class. training=True gets you a new
+    # model every time due to dropout
+    y_probas = np.stack([model(testX_reshape, training=True)
+                         for sample in range(iterations)])
+
+    # Find the mean probabilities for each class
+    y_proba = y_probas.mean(axis=0)
+
+    print_debug = False
+    if (print_debug):
+        np.round(y_proba[1], 2)
+
+    # Find the highest probability class
+    prediction = np.argmax(y_proba, axis=1)
+
+    return accuracy_score(prediction, testy)
+
+
+
+
+class OneCycleScheduler(keras.callbacks.Callback):
+    """ My own 1-cycle scheduler """
+    def __init__(self, iterations, max_rate, start_rate=None,
+                 last_iterations=None, last_rate=None):
+        self.iterations = iterations
+        self.max_rate = max_rate
+        self.start_rate = start_rate or max_rate / 10
+        self.last_iterations = last_iterations or iterations // 10 + 1
+        self.half_iteration = (iterations - self.last_iterations) // 2
+        self.last_rate = last_rate or self.start_rate / 1000
+        self.iteration = 0
+
+    def _interpolate(self, iter1, iter2, rate1, rate2):
+        return ((rate2 - rate1) * (self.iteration - iter1)
+                / (iter2 - iter1) + rate1)
+
+    def on_batch_begin(self, batch, logs):
+        if self.iteration < self.half_iteration:
+            rate = self._interpolate(0, self.half_iteration, self.start_rate, self.max_rate)
+        elif self.iteration < 2 * self.half_iteration:
+            rate = self._interpolate(self.half_iteration, 2 * self.half_iteration,
+                                     self.max_rate, self.start_rate)
+        else:
+            rate = self._interpolate(2 * self.half_iteration, self.iterations,
+                                     self.start_rate, self.last_rate)
+            rate = max(rate, self.last_rate)
+        self.iteration += 1
+        keras.backend.set_value(self.model.optimizer.lr, rate)
+
+
+# Create and test a model that uses the 1-cycle schedule
+def create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape,
+                     y_train, y_valid, testy):
+    """
+    Call with:
+    create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape, y_train, y_valid, testy)
+    """
+    n_epochs = 100
+    batch_size = 32
+    onecycle = OneCycleScheduler(len(X_train_reshape) // batch_size * n_epochs, max_rate=0.05)
+    debug=False
+
+    # Got to remember them. mm_bn is the model with Batch normalization
+    model = flattened_model(100, normalization=True, dropout_rate=0.2)
+    if (debug):
+        print ("Model built: ", model)
+
+    history = model.fit(X_train_reshape, y_train, epochs=n_epochs,
+                        verbose=0, batch_size=batch_size,
+                        validation_data=(X_valid_reshape, y_valid),
+                        callbacks=[onecycle]) # Modify the
+                                              # learning-rate with a
+                                              # linear ramp-up just
+                                              # for testing
+
 
