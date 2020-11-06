@@ -429,17 +429,18 @@ def create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape,
     onecycle = OneCycleScheduler(len(X_train_reshape) // batch_size * n_epochs, max_rate=0.05)
     debug=False
 
-    # Got to remember them. mm_bn is the model with Batch normalization
+    # Create the model here, with batch normalization
     model = flattened_model(100, normalization=True, dropout_rate=0.2)
     if (debug):
         print ("Model built: ", model)
 
+    # callbacks=[onecycle] call my one-cycle scheduler.
     history = model.fit(X_train_reshape, y_train, epochs=n_epochs,
                         verbose=0, batch_size=batch_size,
                         validation_data=(X_valid_reshape, y_valid),
-                        callbacks=[onecycle]) # Modify the
-                                              # learning-rate with a
-                                              # linear ramp-up just
-                                              # for testing
+                        callbacks=[onecycle])
+
+    return history
+
 
 
