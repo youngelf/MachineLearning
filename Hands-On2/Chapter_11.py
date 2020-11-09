@@ -210,9 +210,9 @@ def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, s
     """ Fit a model provided here with number of epochs, and verbosity
 
     Call with:
-    fit("simplest", simplest, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, showFig=False)
+    history = fit("simplest", simplest, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, showFig=False)
     same as:
-    fit("simplest", simplest, X_train, y_train, X_valid, y_valid)
+    history = fit("simplest", simplest, X_train, y_train, X_valid, y_valid)
 
     epochs: Number of epochs to train (integer)
     verbose: whether to print verbose training information (0 or 1)
@@ -270,7 +270,7 @@ def flattened_model(n_classes=100, normalization=False, dropout_rate=-1):
         Compiled keras model
 
     Call with:
-    regularized = flattened_model(n_classes=100, normalization=True, dropout_rate=0.2)
+    scaled = flattened_model(n_classes=100, normalization=True, dropout_rate=0.2)
 
     """
     # create model
@@ -346,17 +346,21 @@ def model_quality(model, testX_reshape, testy):
     """ Calculate the quality of a flattened model
 
     Call with:
-    model_quality(scaled, testX_reshape, testy)
+    score = model_quality(scaled, testX_reshape, testy)
+
+    Prints and returns the accuracy score
     """
 
     # Calculate probabilities of each class
-    y_pred = mm_drop.predict(testX_reshape)
+    y_pred = model.predict(testX_reshape)
 
     # Find the highest probability class
     prediction = np.argmax(y_pred_nomc, axis=1)
 
     # Now compute the accuracy
-    return accuracy_score(prediction, testy)
+    score = accuracy_score(prediction, testy)
+    print ("Accuracy score is ", score)
+    return score
 
 
 # Monte-Carlo stacking of a model.
@@ -365,6 +369,8 @@ def stacked_model(model, testX_reshape, testy, iterations=100):
 
     Call with:
     stacked_model(scaled, testX_reshape, testy, iterations=30)
+
+    Prints and returns the accuracy score
     """
 
     # The probability of each class. training=True gets you a new
@@ -382,7 +388,9 @@ def stacked_model(model, testX_reshape, testy, iterations=100):
     # Find the highest probability class
     prediction = np.argmax(y_proba, axis=1)
 
-    return accuracy_score(prediction, testy)
+    score = accuracy_score(prediction, testy)
+    print ("Accuracy score is ", score)
+    return score
 
 
 
@@ -444,3 +452,25 @@ def create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape,
 
 
 
+def run_all():
+    X_train, X_valid, testX, y_train, y_valid, testy = load_cifar()
+    confirm_cifar(X_train, X_valid, testX, y_train, y_valid, testy)
+
+    regularized = L2regularized(n_classes=100, normalization=True, dropout_rate=0.2)
+    fit("simplest", simplest,
+        X_train, y_train, X_valid, y_valid,
+        epochs=30, verbose=0, showFig=False)
+
+    loss, accuracy = evaluate("simplest", simplest, testX, testy)
+
+    # Now a flattened model
+    scaled = flattened_model(n_classes=100, normalization=True, dropout_rate=0.2)
+    X_train_reshape, X_valid_reshape, testX_reshape = standard_scale(X_train, X_valid, testX)
+
+    fit("scaled", scaled,
+        X_train_reshape, y_train, X_valid_reshape, y_valid,
+        epochs=30, verbose=0, showFig=False)
+    model_quality(scaled, testX_reshape, testy)
+
+    # Now a stacked, Monte carlo model
+    stacked_model(scaled, testX_reshape, testy, iterations=30)
