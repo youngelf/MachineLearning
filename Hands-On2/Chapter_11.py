@@ -198,13 +198,20 @@ def L2regularized(n_classes=100, normalization=False, dropout_rate=-1):
     return model
 
 
-estimator = keras.wrappers.scikit_learn.KerasClassifier(
-    build_fn=twenty_dense,
-    n_classes=10,
-    class_weight={0: 1, 1:3})
+def simplest_model():
+    """Make the simplest model, just 20 dense layers
+    Call with:
+    simplest = simplest_model()
+    """
+    estimator = keras.wrappers.scikit_learn.KerasClassifier(
+        build_fn=twenty_dense,
+        n_classes=10,
+        class_weight={0: 1, 1:3})
 
-simplest = twenty_dense(100)
-print ("Model built: ", simplest)
+    simplest = twenty_dense(100)
+    print ("Model built: ", simplest)
+    return simplest
+
 
 def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, showFig=False):
     """ Fit a model provided here with number of epochs, and verbosity
@@ -452,16 +459,33 @@ def create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape,
 
 
 
-def run_all():
+def run_all_11():
+    """ Run the full file
+    Call with:
+    run_all_11()
+
+    Takes a few hours to run!
+    """
+
+    # Load the CIFAR dataset, and confirms that it exists.
     X_train, X_valid, testX, y_train, y_valid, testy = load_cifar()
     confirm_cifar(X_train, X_valid, testX, y_train, y_valid, testy)
 
-    regularized = L2regularized(n_classes=100, normalization=True, dropout_rate=0.2)
+    # Just the naive dense 20 layer model.
+    simplest = simplest_model()
     fit("simplest", simplest,
         X_train, y_train, X_valid, y_valid,
         epochs=30, verbose=0, showFig=False)
-
     loss, accuracy = evaluate("simplest", simplest, testX, testy)
+
+
+    # Now a regularized model with dropout and normalization
+    regularized = L2regularized(n_classes=100, normalization=True, dropout_rate=0.2)
+    fit("regularized", regularized,
+        X_train, y_train, X_valid, y_valid,
+        epochs=30, verbose=0, showFig=False)
+    loss, accuracy = evaluate("regularized", regularized, testX, testy)
+
 
     # Now a flattened model
     scaled = flattened_model(n_classes=100, normalization=True, dropout_rate=0.2)
@@ -472,5 +496,7 @@ def run_all():
         epochs=30, verbose=0, showFig=False)
     model_quality(scaled, testX_reshape, testy)
 
-    # Now a stacked, Monte carlo model
+    # Now a stacked, Monte carlo model, created from the scaled model
+    # earlier.  Note that this gets the testX and testy directly, and
+    # creates many different predictions for the same test values.
     stacked_model(scaled, testX_reshape, testy, iterations=30)
