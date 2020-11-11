@@ -5,12 +5,14 @@
 
 
 # Common imports
-
 import matplotlib.cm as cm
 from matplotlib.image import imread
 import matplotlib.pyplot as plt
 
 import numpy as np
+
+import pandas as pd
+import pydot
 
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
@@ -28,20 +30,24 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+import sys
+
 import tensorflow as tf
 from tensorflow import keras
 
-import sys
 
+# Verify that the run worked and we have the imports working.
 print("TF version ", tf.__version__)
 print("Keras version ", keras.__version__)
 
 
 def load_fashion_mnist():
-    """Load the fashion MNIST data
+    """Load the fashion MNIST data. Should only need to be called once.
+
     Call with:
     X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_fashion_mnist()
     """
+
     fashion_mnist = keras.datasets.fashion_mnist
 
     (X_train_full, y_train_full), (X_test, y_test) = fashion_mnist.load_data()
@@ -68,375 +74,225 @@ def load_fashion_mnist():
 
 
 
+def print_debug(X_train, y_train, class_names):
+    """Prints some debugging information about the dataset
+
+    Call with:
+    print_debug(X_train, y_train, class_names)
+    """
+
+    print ("Class name of the first value is: ", class_names[y_train[0]])
+    # Let's look at a single image. By now I am good enough to print this stuff out.
+    plt.imshow(1 - X_train[0])
+
+
+def create_simplest_model(layers=[300, 100], optimizer="sgd"):
+    """Create a dense model with 2 relu activation layers by default and softmax
+output
+
+    optimizer(optional): Provide an optimizer that will be used when
+      compiling the model.
+
+    Call with:
+    simplest = create_simplest_model()
+
+    You can make a deeper model specifying the hidden layers like this
+    simplest = create_simplest_model([300, 300, 100])
+
+    """
+
+    # This is the other way of creating the default layer. It just
+    # doesn't work when we want it to be dynamic
+
+    # model = keras.models.Sequential([
+    #   keras.layers.Flatten(input_shape=[28, 28]),
+    #   keras.layers.Dense(300, activation="relu"),
+    #   keras.layers.Dense(100, activation="relu"),
+    #   keras.layers.Dense(10, activation="softmax")
+    # ])
+
+    # We use the imperitive method since we will pass an array of values
+    model = keras.models.Sequential()
+    model.add(keras.layers.Flatten(input_shape=[28, 28]))
+
+    # Add all the layers provided as arguments. By default we will add
+    # two layers, one with 300 hidden layers, and the second with 100
+    # hidden layers.
+    for i in layers:
+        model.add(keras.layers.Dense(i, activation="relu"))
+
+    # Finally add the output layer
+    model.add(keras.layers.Dense(10, activation="softmax"))
+
+    print ("Model created: ", model.summary())
+    print ("Model layers: ", model.layers)
+
+    model.compile(loss="sparse_categorical_crossentropy",
+                  optimizer=optimizer,
+                  metrics=["accuracy"])
+
+    return model
+
+
+def fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30):
+    """
+    Call with:
+    history = fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30)
+    """
+    history = model.fit(X_train, y_train, epochs=epochs,
+                   validation_data=(X_valid, y_valid))
+
+    return history
+
+
+def plot_training(history, name, show=False):
+    """Plots the model training history
+
+    history: History obtained when training models
+
+    name(String): A human-readable string used when saving models. If
+    show=True, this value is ignored.
+
+    show(boolean): Set to true to see the image in the UI. False by
+    default.
+
+    Call with:
+    plot_training(history, "simplest", show=False)
+
+    """
+
+    if (show):
+        pd.DataFrame(history.history).plot(figsize=(8,5))
+        plt.grid(True)
+        plt.gca().set_ylim(0,1) # Y axis set to [0,1]
+        plt.ylabel("Accuracy or Validation error")
+        plt.xlabel("Training epoch")
+        plt.show()
+    else:
+        fig = plt.figure()
+        pd.DataFrame(history.history).plot(figsize=(8,5))
+        plt.grid(True)
+        plt.gca().set_ylim(0,1) # Y axis set to [0,1]
+        plt.xlabel("Training epoch")
+        plt.ylabel("Accuracy or Validation error")
+        plt.savefig("images/" + name + ".png")
+        plt.close(fig)
+
+
+def save_model(model, name):
+    """ Save the model, and a plot of the model's internals
+
+    Call with:
+    save_model(simplest, "simplest")
+    """
+    keras.utils.plot_model(model, to_file='images/' + name + '.png',
+                       show_shapes=False, show_layer_names=True,
+                       rankdir='TB', expand_nested=False, dpi=96)
+
+    model.save('saved_models/' + 'name')
+
+
+def load_model(name):
+    """Loads a previously saved model
+
+    Call with:
+    model = load_model('simplest')
+
+    """
+    # This is how you load a previously-saved model from disk.
+    model = keras.models.load_model('saved_models/' + name)
+    return model
+
+
+def save_tflite(model):
+    """Convert a model to TFlite
+
+    Call with:
+    tflite_model = save_tflite(model)
+    """
+    # Let's try converting these to Tensorflow Lite. The book does not
+    # cover it, but could we use this model on an edge TPU device?
+
+    # Many Edge TPU devices exist, but none of them work. Sigh
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
+    
+    return tflite_model
+
+
+def run_all_10():
+    """Run all Chapter 10 code.
+    Call with:'
+    run_all_10()
+
+    Takes a few hours(!) to run since we are making many models
+    """
+
+    # Load the dataset and ensure it is fine
+    X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_fashion_mnist()
+    print_debug(X_train, y_train, class_names)
+
+
+    # Now create all the datasets. This one is the simplest naive model
+    simplest = create_simplest_model()
+    history = fit_model(simplest, X_train, y_train, X_valid, y_valid, epochs=30)
+    plot_training(history, "simplest-30", show=False)
+    save_model(simplest, "simplest")
+
+    # Run for longer. Same model as before, trained for longer.
+    simplest = create_simplest_model()
+    history = fit_model(simplest, X_train, y_train, X_valid, y_valid, epochs=300)
+    # This should look overfitted. The accuracy is 100% but the validation accuracy is 91%.
+    plot_training(history, "simplest-300", show=False)
+
+    
+    # Got a learning rate example from here: https://keras.io/api/optimizers/
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=1e-2,
+        decay_steps=10000,
+        decay_rate=0.9)
+
+    model_lr = create_simplest_model(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule))
+    history_lr = fit_model(model_lr, X_train, y_train, X_valid, y_valid, epochs=30)
+    plot_training(history_lr, "lr-30", show=False)
+
+    deeper = create_simplest_model([300, 300, 100])
+    history_deeper = fit_model(deeper, X_train, y_train, X_valid, y_valid, epochs=30)
+    plot_training(history_deeper, "deeper-30", show=False)
+    deeper.save('saved_models/fashion_model_deeper')
+
+    constrained = create_simplest_model([300, 50, 100])
+    history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=30)
+    plot_training(history_deeper, "constrained-30", show=False)
+    constrained.save('saved_models/fashion_model_constrained')
+
+    constrained = create_simplest_model([300, 50, 100])
+    history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=300)
+    plot_training(history_deeper, "constrained-300", show=False)
+
+
+    superdeep = create_simplest_model([300, 100, 100, 100, 100, 100])
+    history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
+    plot_training(history_deeper, "superdeep-30", show=False)
+
+
 # -------------- converted till here --------------------
 print ("Stopping early, still work left to do")
 sys.exit(0)
 
 
-class_names[y_train[0]]
-
-
-# Let's look at a single image. By now I am good enough to print this stuff out.
-
-# In[65]:
-
-
-plt.imshow(1 - X_train[2])
-
-
-# And let's create a Tensorflow network with Keras.
-
-# In[66]:
-
-
-# model = keras.models.Sequential()
-# model.add(keras.layers.Flatten(input_shape=[28, 28]))
-# model.add(keras.layers.Dense(300, activation="relu"))
-# model.add(keras.layers.Dense(100, activation="relu"))
-# model.add(keras.layers.Dense(10, activation="softmax"))
-
-# This is another way of creating it:
-model = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-
-
-# In[67]:
-
-
-model.summary()
-
-
-# In[19]:
-
-
-model.layers
-
-
-# In[21]:
-
-
-model.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-
-history = model.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[68]:
-
-
-y_train.shape
-
-
-# In[69]:
-
-
-X_train.shape
-
-
-# In[14]:
-
-
-import pandas as pd
-
-pd.DataFrame(history.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# This looks good, and convergence has been reached. Accuracy is close to validation accuracy.
-
-# In[30]:
-
-
-# The same model as earlier, but with a different learning rate.
-model_lr = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-
-# Got a learning rate example from here: https://keras.io/api/optimizers/
-lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=1e-2,
-    decay_steps=10000,
-    decay_rate=0.9)
-
-model_lr.compile(loss="sparse_categorical_crossentropy",
-                 optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
-                 metrics=["accuracy"])
-history_lr = model_lr.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[35]:
-
-
-import pandas as pd
-
-pd.DataFrame(history_lr.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# # Batch processing, for later
-# 
-# For later, run with many more epochs and see if the performance improves considerably
-
-# In[31]:
-
-
-# The same model as earlier, but with many more epochs than earlier.
-model2 = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model2.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history2 = model2.fit(X_train, y_train, epochs=300,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[36]:
-
-
-import pandas as pd
-
-pd.DataFrame(history2.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# This looks overfitted. The accuracy is 100% but the validation accuracy is 91%.
-
-# In[32]:
-
-
-# A deeper model than earlier, but with as many epochs as the first.
-model3 = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model3.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history3 = model3.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[38]:
-
-
-import pandas as pd
-
-pd.DataFrame(history3.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# This looks good, and convergence has been reached. Accuracy is close to validation accuracy.
-
-# In[33]:
-
-
-# A deeper model than earlier, but constraining the input layer and expanding again
-model4 = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(50, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model4.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history4 = model4.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[37]:
-
-
-import pandas as pd
-
-pd.DataFrame(history4.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# This looks good, and convergence has been reached. Accuracy is close to validation accuracy.
-
-# In[34]:
-
-
-model4.summary()
-
-
-# In[ ]:
-
-
-# The same model as earlier, but with many more epochs than earlier.
-model2 = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model2.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history2 = model2.fit(X_train, y_train, epochs=300,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[40]:
-
-
-import pandas as pd
-
-pd.DataFrame(history2.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# This looks overfitted. The accuracy is 100% but the validation accuracy is 91%.
-# 
-# Let's make a very deep model and see if that is better than model4, from which this is copied.
-
-# In[41]:
-
-
-# A deeper model than earlier, but constraining the input layer and expanding again
-model4_deep = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model4_deep.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history4_deep = model4_deep.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[42]:
-
-
-import pandas as pd
-
-pd.DataFrame(history4_deep.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# So adding extra layers didn't do much good. Let's try removing layers to see what we get.
-
-# In[45]:
-
-
-# A deeper model than earlier, but constraining the input layer and expanding again
-model4_shallow = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-model4_shallow.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-history4_shallow = model4_shallow.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[46]:
-
-
-import pandas as pd
-
-pd.DataFrame(history4_shallow.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# In[64]:
-
-
-import pydot
-keras.utils.plot_model(model4_shallow, to_file='model.png',
-                       show_shapes=False, show_layer_names=True,
-                       rankdir='TB', expand_nested=False, dpi=96)
-
-
-# This is how you save a model to disk for reading later. This avoids the incredibly costly model training process.
-
-# In[65]:
-
-
-model4.save('saved_models/fashion_model4')
-
-
-# This is how you load a previously-saved model from disk.
-
-# In[68]:
-
-
-new_model4 = keras.models.load_model('saved_models/fashion_model4')
-
-
-# Let's try converting these to Tensorflow Lite. The book does not cover it, but could we use this model on an edge TPU device?
-
-# In[47]:
-
-
-converter = tf.lite.TFLiteConverter.from_keras_model(model4_shallow)
-tflite_model = converter.convert()
-
-
-# In[48]:
-
-
-tflite_model
 
 
 # Ok, that was easy, but now I need an edge TPU board to load that model and make sure it actually does something.
-# 
+#
 # The way to load this is to use tflite, but I need to try that out on a board.
-# 
+#
 # # Regression MLP using the Sequential API
-# 
+#
 # You can use NNs for regression as well. The output is ordinal, and trained on ordinal data.
 
 # In[2]:
 
-
-from sklearn.datasets import fetch_california_housing
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 housing = fetch_california_housing()
 
@@ -475,9 +331,9 @@ mse_test = model.evaluate(X_test, y_test)
 
 
 # # Fine-Tuning Neural Network Hyperparameters
-# 
+#
 # Seems like it is difficult to tell how many layers, how many neurons, and the learning rate, so you use GridSearch on it.  Here's how for the previous example
-# 
+#
 
 # In[5]:
 
@@ -556,7 +412,7 @@ from datetime import datetime
 
 param_distribs = {
     "n_hidden": [0, 1, 2, 3, 4, 5, 6, 7, 8],
-    "n_neurons": np.arange(1, 200),  
+    "n_neurons": np.arange(1, 200),
     "learning_rate": reciprocal(3e-4, 3e-2),
 }
 
@@ -581,7 +437,7 @@ rnd_cv = RandomizedSearchCV(keras_reg, param_distribs,
 #
 # This whole stack is a ball of glue. When it works, you should celebrate because it
 # can break at any moment.
-# 
+#
 # Reference:
 # https://github.com/keras-team/keras/issues/13586
 # https://github.com/keras-team/keras/pull/13598
@@ -597,7 +453,7 @@ end_time = datetime.now()
 
 
 # The failure disussed above
-# 
+#
 # sklearn and Tensorflow/Keras don't play well with each other.
 # You can get a Keras estimator, but cannot clone it. This does not allow
 # RandomizedSearchCV to clone the best estimator and preserve it.
@@ -608,10 +464,10 @@ end_time = datetime.now()
 # because it doesn't support copying its parameters.
 # This whole stack is a ball of glue. When it works, you should celebrate because it
 # can break at any moment.
-# 
+#
 # Reference:
 # [Issue on Keras](https://github.com/keras-team/keras/issues/13586) and [pull request to Keras to fix this discusing the issue](https://github.com/keras-team/keras/pull/13598) and another [pull request to Tensorflow to fix this issue](https://github.com/tensorflow/tensorflow/pull/41341)
-# 
+#
 # A full illustration of the problem below.
 
 # In[43]:
@@ -621,13 +477,13 @@ from sklearn.base import clone
 
 def create_keras_classifier_model(n_classes):
     """Keras multinomial logistic regression creation model
- 
+
     Args:
         n_classes(int): Number of classes to be classified
- 
+
     Returns:
         Compiled keras model
- 
+
     """
     # create model
     model = keras.models.Sequential()
@@ -637,7 +493,7 @@ def create_keras_classifier_model(n_classes):
         loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
     )
     return model
- 
+
 estimator = keras.wrappers.scikit_learn.KerasClassifier(
     build_fn=create_keras_classifier_model, n_classes=2, class_weight={0: 1, 1:3})
 
@@ -722,7 +578,7 @@ from datetime import datetime
 
 param_distribs = {
     "n_hidden": (0, 1, 2, 3, 4, 5, 6, 7, 8),
-    "n_neurons": np.arange(1, 200),  
+    "n_neurons": np.arange(1, 200),
     "learning_rate": reciprocal(3e-4, 3e-2),
 }
 
@@ -761,52 +617,52 @@ rnd_cv.best_params_
 # That finally worked, after close to two days of computation!
 
 # # Exercises.
-# 
+#
 # 1. Playing with [Tensorflow playground](https://playground.tensorflow.org/#activation=tanh&batchSize=10&dataset=circle&regDataset=reg-plane&learningRate=0.03&regularizationRate=0&noise=0&networkShape=4,2&seed=0.99375&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false)
 #    Ist gud. Limited, but good. I wish that kind of visualization was available for each layer on general data. As I remember, a friend was working on it. I should ask KD if he was still doing this.
-#    
-#    
+#
+#
 # Observations:
 # * Depth without hidden nodes is not helpful. 5 hidden layers, with 2 neurons per layer odn't converge with $x_1$ and $x_2$ as inputs.
 # * Breadth without depth is actually ok. Four hidden neurons in just two layers still converges the 2d-donut data.
 # * In the donut data, adding kernel functions $x_1^2$ and $x_2^2$ allows convergence. So Statistical fundamentals still matter! If you choose your kernel functions well, you can train simpler nets (shallow and narrow) and still et great performance.
 # * Large amount of noise makes batch-size selection tricky. Too small a batch size, and your output doesn't generalize well.
 # * Fun playground, and perhaps the first order of business on a problem should be to get a solid understanding of the properties of the data.
-# 
-# 
+#
+#
 # 2. Draw A -> X, B -> NOT -> X.  X -> NOT -> Y, B -> Y. Then X two-connection-> OUTPUT, Y two-connection->OUTPUT. Then OUTPUT is A XOR B
-# 
+#
 # 3. Logistic regression is inspectable. You can see what the intercept (bias) and scale terms mean. The scaling terms give some estimate of value of an attribute. A perceptron might be able to get the job done, though the complexity is not inspectable or understandable.
-# 
+#
 # 4. Logistic activation allowed the training of models using back propagation. Previously, folks were using a step function which is not diffentiable everywhere. Logistic activation is differentiable everywhere and allows the errors to propagate backward to modify the weights of the node connections.
-# 
+#
 # 5. Activation functions: Logistic, Rectified linear units, Sigmoid function. Step function.
-# 
+#
 # 6.
 # Answers below:
-# 
+#
 # * Input matrix $X$ has shape $(m, 10)$ where $m$ is the number of observations.
 # * Hidden layer weight vector $W_h$ has shape (10, 50) and bias vector $b_h$ has shape (1, 50)
 # * Output layer weight vector $W_o$ has shape (50, 3) and bias vector $b_o$ has shape (1, 3)
 # * Output matrix $Y$ has shape $(m,3)$ where $m$ is the number of observations.
-# 
+#
 # Hidden layer matrix $L$ has shape $(m,50)$:
 # $$L(i, k) = \sum_{j=1}^{10} \phi_1(X(i,j) \times W_h (j,k) + b_h(k))$$
 # Then, the output Y is given by:
 # $$Y(i, j) = \sum_{k=1}^{50} \phi_2(L(i,k) \times W_o (k,j) + b_o(j))$$
-# 
+#
 # This should be the same as:
 # $$ Y = \phi_2(\phi_1(X . W_h + b_h) . W_o + b_o)$$
-# 
+#
 # 7. You need two neurons in the output layer for ham/spam. They will provide probabilities of a single observation being ham or spam. Pick the output with higher probability to classify.
 #  For MNIST digits, you need 10 values: one for each digit. Again, you classify by picking the highest probability output.
-# 
+#
 # 8. Backpropagation is taking the errors from a higher layer (or the output layer) and computing the gradients of the specific node, and using gradient descent to update the node weights to reduce the errors at this layer. You do this going back from output (calculating errors from the observed training data), to the highest layer, then the next lower layers, going back to the lowest layer of the network.
-# 
+#
 # Reverse mode autodiff is the specific technique used to calculate gradients of the nodes in the network. It is used by back-propagation to translate errors into magnitude of node weight changes.
-# 
+#
 # 9. Hyperparameters you can tune: Activation function: Linear/selu/relu/sigmoid, number of layers, number of neurons in each layer, Amount of training/test data, size of minibatch, number of epochs, stopping criteria, learning rate. You could try using RandomizedSearchCV to get through this blistering complexity. Scientific Dart-throwing, basically.
-# 
+#
 # 10. Still waiting for the previous run to finish on housing dataset. Will run on MNIST once this notebook's kernel is freed up.
 
 # In[4]:
@@ -898,7 +754,7 @@ mnist_model.evaluate(X_test, y_test)
 
 
 # Test loss is 0.07, and test accuracy is 97.79% Can experiment with a few other combinations to find the ideal model.
-# 
+#
 # Using SELU rather than RELU
 
 # In[11]:
@@ -994,7 +850,3 @@ mnist_model.evaluate(X_test, y_test)
 # # Done with all exercises
 
 # In[ ]:
-
-
-
-
