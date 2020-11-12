@@ -437,7 +437,7 @@ def create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape,
                      y_train, y_valid, testy):
     """
     Call with:
-    create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape, y_train, y_valid, testy)
+    history = create_one_cycle(X_train_reshape, X_valid_reshape, testX_reshape, y_train, y_valid, testy)
     """
     n_epochs = 100
     batch_size = 32
