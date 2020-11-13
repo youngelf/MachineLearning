@@ -1,10 +1,6 @@
-#!/usr/bin/env python
-# coding: utf-8
+# Chapter 10: Deep neural models
 
-## Chapter 10: Multi-Layer Perceptrons with Keras
-
-
-# Common imports
+from datetime import datetime
 import matplotlib.cm as cm
 from matplotlib.image import imread
 import matplotlib.pyplot as plt
@@ -13,6 +9,8 @@ import numpy as np
 
 import pandas as pd
 import pydot
+
+from scipy.stats import reciprocal
 
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
@@ -28,7 +26,9 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
+
 
 import sys
 
@@ -189,7 +189,7 @@ def save_model(model, name):
                        show_shapes=False, show_layer_names=True,
                        rankdir='TB', expand_nested=False, dpi=96)
 
-    model.save('saved_models/' + 'name')
+    model.save('saved_models/' + name)
 
 
 def load_model(name):
@@ -216,8 +216,58 @@ def save_tflite(model):
     # Many Edge TPU devices exist, but none of them work. Sigh
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     tflite_model = converter.convert()
-    
+
     return tflite_model
+
+
+def load_housing_data():
+    """ Load California housing data, scaled
+
+    Call with:
+    X_train, y_train, X_valid, y_valid, testX, testy, scaler = load_housing_data()
+    """
+
+    housing = fetch_california_housing()
+    X_train_full, testX, y_train_full, testy = train_test_split(
+        housing.data, housing.target)
+    
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X_train_full, y_train_full)
+
+    # Scale the data before returning
+    scaler = StandardScaler()
+
+    X_train = scaler.fit_transform(X_train)
+    # Always use the same scaler for the X_validation and X_test!
+    X_valid = scaler.transform(X_valid)
+    X_test = scaler.transform(X_test)
+
+    return X_train, y_train, X_valid, y_valid, testX, testy, scaler
+
+
+def create_housing_model(X_train, y_train, X_valid, y_valid, optimizer="sgd"):
+    """ Creates a housing model
+
+    Call with:
+    model = create_housing_model(X_train, y_train, X_valid, y_valid, optimizer="sgd")
+    """
+    model = keras.models.Sequential([
+        keras.layers.Dense(30, activation="relu", input_shape=X_train.shape[1:]),
+        keras.layers.Dense(1)
+    ])
+    model.compile(loss="mean_squared_error", optimizer=optimizer)
+    return model
+
+
+def fit_housing(model, X_train, y_train, X_valid, y_valid, testX, testy, epochs=20):
+    """ Fits the housing data, and also returns the training history and the mse error.
+    Call with:
+    history, mse_test = fit_housing(model, X_train, y_train, X_valid, y_valid, testX, testy, epochs=30)
+    """
+    history = model.fit(X_train, y_train, epochs=epochs,
+                        validation_data = (X_valid, y_valid))
+    mse_test = model.evaluate(testX, testy)
+    return history, mse_test
 
 
 def run_all_10():
@@ -245,7 +295,7 @@ def run_all_10():
     # This should look overfitted. The accuracy is 100% but the validation accuracy is 91%.
     plot_training(history, "simplest-300", show=False)
 
-    
+
     # Got a learning rate example from here: https://keras.io/api/optimizers/
     lr_schedule = keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=1e-2,
@@ -256,15 +306,16 @@ def run_all_10():
     history_lr = fit_model(model_lr, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_lr, "lr-30", show=False)
 
+
     deeper = create_simplest_model([300, 300, 100])
     history_deeper = fit_model(deeper, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "deeper-30", show=False)
-    deeper.save('saved_models/fashion_model_deeper')
+    save_model(deeper, 'fashion_deeper')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "constrained-30", show=False)
-    constrained.save('saved_models/fashion_model_constrained')
+    save_model(constrained, 'fashion_constrained')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=300)
@@ -275,6 +326,9 @@ def run_all_10():
     history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "superdeep-30", show=False)
 
+    X_train, y_train, X_valid, y_valid, testX, testy, scaler = load_housing_data()
+    housing = create_housing_model(X_train, y_train, X_valid, y_valid)
+    history, mse_test = fit_housing(housing, X_train, y_train, X_valid, y_valid, testX, testy, epochs=30)
 
 # -------------- converted till here --------------------
 print ("Stopping early, still work left to do")
@@ -292,44 +346,6 @@ sys.exit(0)
 # You can use NNs for regression as well. The output is ordinal, and trained on ordinal data.
 
 # In[2]:
-
-
-housing = fetch_california_housing()
-
-X_train_full, X_test, y_train_full, y_test = train_test_split(
-                                                housing.data, housing.target)
-
-
-X_train, X_valid, y_train, y_valid = train_test_split(
-                                                X_train_full, y_train_full)
-
-scaler = StandardScaler()
-
-
-# In[3]:
-
-
-X_train = scaler.fit_transform(X_train)
-# Always use the same scaler for the X_validation and X_test!
-X_valid = scaler.transform(X_valid)
-X_test = scaler.transform(X_test)
-
-
-# In[4]:
-
-
-model = keras.models.Sequential([
-    keras.layers.Dense(30, activation="relu", input_shape=X_train.shape[1:]),
-    keras.layers.Dense(1)
-])
-
-model.compile(loss="mean_squared_error", optimizer="sgd")
-history = model.fit(X_train, y_train, epochs=20,
-                   validation_data = (X_valid, y_valid))
-
-mse_test = model.evaluate(X_test, y_test)
-
-
 # # Fine-Tuning Neural Network Hyperparameters
 #
 # Seems like it is difficult to tell how many layers, how many neurons, and the learning rate, so you use GridSearch on it.  Here's how for the previous example
@@ -376,39 +392,6 @@ y_pred = keras_reg.predict(X_new)
 # In[15]:
 
 
-# Custom error handler for the entire notebook so stack traces are not lost
-from IPython.core.ultratb import AutoFormattedTB
-
-# initialize the formatter for making the tracebacks into strings
-itb = AutoFormattedTB(mode = 'Plain', tb_offset = 1)
-
-# Define a global with the stack trace that we can append to in the handler.
-viki_stack_trace = ''
-
-# this function will be called on exceptions in any cell
-def custom_exc(shell, etype, evalue, tb, tb_offset=None):
-    global viki_stack_trace
-
-    # still show the error within the notebook, don't just swallow it
-    shell.showtraceback((etype, evalue, tb), tb_offset=tb_offset)
-
-    # grab the traceback and make it into a list of strings
-    stb = itb.structured_traceback(etype, evalue, tb)
-    sstb = itb.stb2text(stb)
-
-    print (sstb) # <--- this is the variable with the traceback string
-    viki_stack_trace = viki_stack_trace + sstb
-
-# this registers a custom exception handler for the whole current notebook
-get_ipython().set_custom_exc((Exception,), custom_exc)
-
-
-# In[ ]:
-
-
-from scipy.stats import reciprocal
-from sklearn.model_selection import RandomizedSearchCV
-from datetime import datetime
 
 param_distribs = {
     "n_hidden": [0, 1, 2, 3, 4, 5, 6, 7, 8],
@@ -497,7 +480,7 @@ def create_keras_classifier_model(n_classes):
 estimator = keras.wrappers.scikit_learn.KerasClassifier(
     build_fn=create_keras_classifier_model, n_classes=2, class_weight={0: 1, 1:3})
 
-viki_stack_trace = ''
+
 clone(estimator)
 
 

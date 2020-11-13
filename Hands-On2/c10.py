@@ -182,7 +182,7 @@ def save_model(model, name):
                        show_shapes=False, show_layer_names=True,
                        rankdir='TB', expand_nested=False, dpi=96)
 
-    model.save('saved_models/' + 'name')
+    model.save('saved_models/' + name)
 
 
 def load_model(name):
@@ -209,7 +209,7 @@ def save_tflite(model):
     # Many Edge TPU devices exist, but none of them work. Sigh
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     tflite_model = converter.convert()
-    
+
     return tflite_model
 
 
@@ -238,7 +238,7 @@ def run_all_10():
     # This should look overfitted. The accuracy is 100% but the validation accuracy is 91%.
     plot_training(history, "simplest-300", show=False)
 
-    
+
     # Got a learning rate example from here: https://keras.io/api/optimizers/
     lr_schedule = keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=1e-2,
@@ -249,15 +249,16 @@ def run_all_10():
     history_lr = fit_model(model_lr, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_lr, "lr-30", show=False)
 
+
     deeper = create_simplest_model([300, 300, 100])
     history_deeper = fit_model(deeper, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "deeper-30", show=False)
-    deeper.save('saved_models/fashion_model_deeper')
+    save_model(deeper, 'fashion_deeper')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "constrained-30", show=False)
-    constrained.save('saved_models/fashion_model_constrained')
+    save_model(constrained, 'fashion_constrained')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=300)
@@ -267,4 +268,3 @@ def run_all_10():
     superdeep = create_simplest_model([300, 100, 100, 100, 100, 100])
     history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "superdeep-30", show=False)
-
