@@ -134,12 +134,12 @@ output
     return model
 
 
-def fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30):
+def fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0):
     """
     Call with:
     history = fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30)
     """
-    history = model.fit(X_train, y_train, epochs=epochs,
+    history = model.fit(X_train, y_train, epochs=epochs, verbose=verbose,
                    validation_data=(X_valid, y_valid))
 
     return history

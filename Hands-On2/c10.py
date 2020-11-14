@@ -268,3 +268,6 @@ def run_all_10():
     superdeep = create_simplest_model([300, 100, 100, 100, 100, 100])
     history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "superdeep-30", show=False)
+
+
+    
