@@ -29,6 +29,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
 
+from scipy.stats import reciprocal
+from sklearn.model_selection import RandomizedSearchCV
+from datetime import datetime
+
 
 import sys
 
@@ -270,6 +274,47 @@ def fit_housing(model, X_train, y_train, X_valid, y_valid, testX, testy, epochs=
     return history, mse_test
 
 
+def build_model(n_hidden=1, n_neurons=30, learning_rate=3e-3, input_shape=[8]):
+    """Create a model with the specified parameters
+
+    Call with:
+    keras_reg = keras.wrappers.scikit_learn.KerasRegressor(build_model)
+    keras_reg.fit(X_train, y_train, epochs=100,
+             validation_data=(X_valid, y_valid),
+              callbacks = [keras.callbacks.EarlyStopping(patience=10)])
+    mse_test = keras_reg.score(X_test, y_test)
+    y_pred = keras_reg.predict(X_new)
+
+    """
+    model = keras.models.Sequential()
+    model.add(keras.layers.InputLayer(input_shape = input_shape))
+    for layer in range(n_hidden):
+        model.add(keras.layers.Dense(n_neurons, activation="selu"))
+    model.add(keras.layers.Dense(1))
+    optimizer = keras.optimizers.SGD(lr=learning_rate)
+    model.compile(loss="mse", optimizer=optimizer)
+    return model
+
+def create_keras_classifier_model(n_classes):
+    """Keras multinomial logistic regression creation model
+
+    Args:
+        n_classes(int): Number of classes to be classified
+
+    Returns:
+        Compiled keras model
+
+    """
+    # create model
+    model = keras.models.Sequential()
+    model.add(keras.layersDense(n_classes, activation="softmax"))
+    # Compile model
+    model.compile(
+        loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+    )
+    return model
+
+
 def run_all_10():
     """Run all Chapter 10 code.
     Call with:'
@@ -330,61 +375,52 @@ def run_all_10():
     housing = create_housing_model(X_train, y_train, X_valid, y_valid)
     history, mse_test = fit_housing(housing, X_train, y_train, X_valid, y_valid, testX, testy, epochs=30)
 
+
+    keras_reg = keras.wrappers.scikit_learn.KerasRegressor(build_model)
+    keras_reg.fit(X_train, y_train, epochs=100,
+                  validation_data=(X_valid, y_valid),
+                  callbacks = [keras.callbacks.EarlyStopping(patience=10)])
+    mse_test = keras_reg.score(testX, testy)
+    print ("Error of keras reg: ", mse_test)
+
+    # Or, you can train a very computationally intensive Randomized or
+    # GridSearch here. I don't fully understand why Randomized Search
+    # is better here, but let's listen to the book and try it anyway
+    param_distribs = {
+        "n_hidden": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "n_neurons": np.arange(1, 200),
+        "learning_rate": reciprocal(3e-4, 3e-2),
+    }
+
+    estimator = keras.wrappers.scikit_learn.KerasClassifier(
+        build_fn=create_keras_classifier_model, n_classes=2, class_weight={0: 1, 1:3})
+    clone(estimator)
+
+    start_time = datetime.now()
+    # The best estimator is only available if we 'refit=True'
+    rnd_cv = RandomizedSearchCV(keras_reg, param_distribs,
+                                n_iter=500, cv=3, refit=False)
+
+    # verbose=0 removes all the noisy output from training.
+    rnd_cv.fit(X_train, y_train, epochs=200,
+               validation_data=(X_valid, y_valid),
+               callbacks=[keras.callbacks.EarlyStopping(patience=10)],
+               verbose=0)
+
+    end_time = datetime.now()
+    print ("Total run time: ", end_time - start_time)
+
+    print ("Best score: ", rnd_cv.best_score_)
+    print ("Best params: ", rnd_cv.best_params_)
+
+
 # -------------- converted till here --------------------
 print ("Stopping early, still work left to do")
-sys.exit(0)
 
 
+ignore_ = """
+Do not sys.exit(0) because that makes ipython think our %run failed, which it did not.
 
-
-# Ok, that was easy, but now I need an edge TPU board to load that model and make sure it actually does something.
-#
-# The way to load this is to use tflite, but I need to try that out on a board.
-#
-# # Regression MLP using the Sequential API
-#
-# You can use NNs for regression as well. The output is ordinal, and trained on ordinal data.
-
-# In[2]:
-# # Fine-Tuning Neural Network Hyperparameters
-#
-# Seems like it is difficult to tell how many layers, how many neurons, and the learning rate, so you use GridSearch on it.  Here's how for the previous example
-#
-
-# In[5]:
-
-
-def build_model(n_hidden=1, n_neurons=30, learning_rate=3e-3, input_shape=[8]):
-    "Create a model with paramters specified"
-    model = keras.models.Sequential()
-    model.add(keras.layers.InputLayer(input_shape = input_shape))
-    for layer in range(n_hidden):
-        model.add(keras.layers.Dense(n_neurons, activation="selu"))
-    model.add(keras.layers.Dense(1))
-    optimizer = keras.optimizers.SGD(lr=learning_rate)
-    model.compile(loss="mse", optimizer=optimizer)
-    return model
-
-keras_reg = keras.wrappers.scikit_learn.KerasRegressor(build_model)
-
-
-# In[22]:
-
-
-keras_reg = keras.wrappers.scikit_learn.KerasRegressor(build_model)
-
-
-# You can train a model using keras_reg as a model.
-
-# In[23]:
-
-
-keras_reg.fit(X_train, y_train, epochs=100,
-             validation_data=(X_valid, y_valid),
-              callbacks = [keras.callbacks.EarlyStopping(patience=10)])
-
-mse_test = keras_reg.score(X_test, y_test)
-y_pred = keras_reg.predict(X_new)
 
 
 # Or, you can train a very computationally intensive Randomized or GridSearch here. I don't fully understand why Randomized Search is better here, but let's listen to the book and try it anyway
@@ -393,262 +429,11 @@ y_pred = keras_reg.predict(X_new)
 
 
 
-param_distribs = {
-    "n_hidden": [0, 1, 2, 3, 4, 5, 6, 7, 8],
-    "n_neurons": np.arange(1, 200),
-    "learning_rate": reciprocal(3e-4, 3e-2),
-}
-
-# This is going to break.
-viki_stack_trace = ''
-
-start_time = datetime.now()
-# The best estimator is only available if we 'refit=True'
-rnd_cv = RandomizedSearchCV(keras_reg, param_distribs,
-                            n_iter=10, cv=3, refit=True)
-
-# Frustration upon frustration!
-# Read cell below
-# sklearn and Tensorflow/Keras don't play well with each other.
-# You can get a Keras estimator, but cannot clone it. This does not allow
-# RandomizedSearchCV to clone the best estimator and preserve it.
-# And so we cannot specify refit=True.
-# This has got to be one of the more frustrating parts of this 'software stack'
-# Scikit-Learn makes specific assumptions, has expectations around clone.
-# Tensorflow, and specifically Keras on Tensorflow doesn't work with the clone interface
-# because it doesn't support copying its parameters.
-#
-# This whole stack is a ball of glue. When it works, you should celebrate because it
-# can break at any moment.
-#
-# Reference:
-# https://github.com/keras-team/keras/issues/13586
-# https://github.com/keras-team/keras/pull/13598
-
-
-# verbose=0 removes all the noisy output from training.
-rnd_cv.fit(X_train, y_train, epochs=200,
-           validation_data=(X_valid, y_valid),
-           callbacks=[keras.callbacks.EarlyStopping(patience=10)],
-           verbose=0)
-
-end_time = datetime.now()
-
-
-# The failure disussed above
-#
-# sklearn and Tensorflow/Keras don't play well with each other.
-# You can get a Keras estimator, but cannot clone it. This does not allow
-# RandomizedSearchCV to clone the best estimator and preserve it.
-# And so we cannot specify refit=True.
-# This has got to be one of the more frustrating parts of this 'software stack'
-# Scikit-Learn makes specific assumptions, has expectations around clone.
-# Tensorflow, and specifically Keras on Tensorflow doesn't work with the clone interface
-# because it doesn't support copying its parameters.
-# This whole stack is a ball of glue. When it works, you should celebrate because it
-# can break at any moment.
-#
-# Reference:
-# [Issue on Keras](https://github.com/keras-team/keras/issues/13586) and [pull request to Keras to fix this discusing the issue](https://github.com/keras-team/keras/pull/13598) and another [pull request to Tensorflow to fix this issue](https://github.com/tensorflow/tensorflow/pull/41341)
-#
-# A full illustration of the problem below.
-
-# In[43]:
-
-
-from sklearn.base import clone
-
-def create_keras_classifier_model(n_classes):
-    """Keras multinomial logistic regression creation model
-
-    Args:
-        n_classes(int): Number of classes to be classified
-
-    Returns:
-        Compiled keras model
-
-    """
-    # create model
-    model = keras.models.Sequential()
-    model.add(keras.layersDense(n_classes, activation="softmax"))
-    # Compile model
-    model.compile(
-        loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
-    )
-    return model
-
-estimator = keras.wrappers.scikit_learn.KerasClassifier(
-    build_fn=create_keras_classifier_model, n_classes=2, class_weight={0: 1, 1:3})
-
-
-clone(estimator)
-
-
-# And this is the saved error from earlier.
-
-# In[39]:
-
-
-# keras_clone_error = viki_stack_trace
-print (keras_clone_error)
-
-
-# In[30]:
-
-
-viki_stack_trace = ''
-keras_clone_error = viki_stack_trace
-print (keras_clone_error)
-print(viki_stack_trace)
-
-
-# In[38]:
-
-
-keras_clone_error = viki_stack_trace
-print (keras_clone_error)
-
-
-# After the random search, you can get the best params, and the model, save it and use it for predictions.
-
-# In[36]:
-
-
-# The best paramters after search
-# saved_best_params = rnd_cv.best_params_
-# saved_best_score = rnd_cv.best_score_
-#
-print(saved_best_params)
-print(saved_best_score)
-
-# Time taken
-end_time - start_time
-
-
-# In[92]:
-
-
-# best_model only exists when 'refit=True' is specified to RandomizedSearchCV, I think.
-best_model = rnd_cv.best_estimator_
-
-
-# In[93]:
-
-
-dir(rnd_cv)
-
-
-# In[94]:
-
-
-rnd_cv.estimator
-
-
-# In[ ]:
-
-
-
-
-
-# Longer run for later
-
-# In[ ]:
-
-
-from scipy.stats import reciprocal
-from sklearn.model_selection import RandomizedSearchCV
-from datetime import datetime
-
-param_distribs = {
-    "n_hidden": (0, 1, 2, 3, 4, 5, 6, 7, 8),
-    "n_neurons": np.arange(1, 200),
-    "learning_rate": reciprocal(3e-4, 3e-2),
-}
-
-start_time = datetime.now()
-# The best estimator is only available if we 'refit=True'
-rnd_cv = RandomizedSearchCV(keras_reg, param_distribs,
-                            n_iter=500, cv=3, refit=False)
-
-# verbose=0 removes all the noisy output from training.
-rnd_cv.fit(X_train, y_train, epochs=200,
-           validation_data=(X_valid, y_valid),
-           callbacks=[keras.callbacks.EarlyStopping(patience=10)],
-           verbose=0)
-
-end_time = datetime.now()
-
-
-# In[ ]:
-
 
 end_time - start_time
 
 
 # In[53]:
-
-
-rnd_cv.best_score_
-
-
-# In[54]:
-
-
-rnd_cv.best_params_
-
-
-# That finally worked, after close to two days of computation!
-
-# # Exercises.
-#
-# 1. Playing with [Tensorflow playground](https://playground.tensorflow.org/#activation=tanh&batchSize=10&dataset=circle&regDataset=reg-plane&learningRate=0.03&regularizationRate=0&noise=0&networkShape=4,2&seed=0.99375&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false)
-#    Ist gud. Limited, but good. I wish that kind of visualization was available for each layer on general data. As I remember, a friend was working on it. I should ask KD if he was still doing this.
-#
-#
-# Observations:
-# * Depth without hidden nodes is not helpful. 5 hidden layers, with 2 neurons per layer odn't converge with $x_1$ and $x_2$ as inputs.
-# * Breadth without depth is actually ok. Four hidden neurons in just two layers still converges the 2d-donut data.
-# * In the donut data, adding kernel functions $x_1^2$ and $x_2^2$ allows convergence. So Statistical fundamentals still matter! If you choose your kernel functions well, you can train simpler nets (shallow and narrow) and still et great performance.
-# * Large amount of noise makes batch-size selection tricky. Too small a batch size, and your output doesn't generalize well.
-# * Fun playground, and perhaps the first order of business on a problem should be to get a solid understanding of the properties of the data.
-#
-#
-# 2. Draw A -> X, B -> NOT -> X.  X -> NOT -> Y, B -> Y. Then X two-connection-> OUTPUT, Y two-connection->OUTPUT. Then OUTPUT is A XOR B
-#
-# 3. Logistic regression is inspectable. You can see what the intercept (bias) and scale terms mean. The scaling terms give some estimate of value of an attribute. A perceptron might be able to get the job done, though the complexity is not inspectable or understandable.
-#
-# 4. Logistic activation allowed the training of models using back propagation. Previously, folks were using a step function which is not diffentiable everywhere. Logistic activation is differentiable everywhere and allows the errors to propagate backward to modify the weights of the node connections.
-#
-# 5. Activation functions: Logistic, Rectified linear units, Sigmoid function. Step function.
-#
-# 6.
-# Answers below:
-#
-# * Input matrix $X$ has shape $(m, 10)$ where $m$ is the number of observations.
-# * Hidden layer weight vector $W_h$ has shape (10, 50) and bias vector $b_h$ has shape (1, 50)
-# * Output layer weight vector $W_o$ has shape (50, 3) and bias vector $b_o$ has shape (1, 3)
-# * Output matrix $Y$ has shape $(m,3)$ where $m$ is the number of observations.
-#
-# Hidden layer matrix $L$ has shape $(m,50)$:
-# $$L(i, k) = \sum_{j=1}^{10} \phi_1(X(i,j) \times W_h (j,k) + b_h(k))$$
-# Then, the output Y is given by:
-# $$Y(i, j) = \sum_{k=1}^{50} \phi_2(L(i,k) \times W_o (k,j) + b_o(j))$$
-#
-# This should be the same as:
-# $$ Y = \phi_2(\phi_1(X . W_h + b_h) . W_o + b_o)$$
-#
-# 7. You need two neurons in the output layer for ham/spam. They will provide probabilities of a single observation being ham or spam. Pick the output with higher probability to classify.
-#  For MNIST digits, you need 10 values: one for each digit. Again, you classify by picking the highest probability output.
-#
-# 8. Backpropagation is taking the errors from a higher layer (or the output layer) and computing the gradients of the specific node, and using gradient descent to update the node weights to reduce the errors at this layer. You do this going back from output (calculating errors from the observed training data), to the highest layer, then the next lower layers, going back to the lowest layer of the network.
-#
-# Reverse mode autodiff is the specific technique used to calculate gradients of the nodes in the network. It is used by back-propagation to translate errors into magnitude of node weight changes.
-#
-# 9. Hyperparameters you can tune: Activation function: Linear/selu/relu/sigmoid, number of layers, number of neurons in each layer, Amount of training/test data, size of minibatch, number of epochs, stopping criteria, learning rate. You could try using RandomizedSearchCV to get through this blistering complexity. Scientific Dart-throwing, basically.
-#
-# 10. Still waiting for the previous run to finish on housing dataset. Will run on MNIST once this notebook's kernel is freed up.
-
-# In[4]:
 
 
 (X_train_full, y_train_full), (X_test, y_test) = keras.datasets.mnist.load_data()
@@ -833,3 +618,4 @@ mnist_model.evaluate(X_test, y_test)
 # # Done with all exercises
 
 # In[ ]:
+"""
