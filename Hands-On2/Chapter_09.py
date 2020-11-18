@@ -1,19 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Chapter 9: Unsupervised Learning Methods
-# 
-# When you don't have labeled data. What can you do? Clustering, mostly. This was called "Data Mining" back in the day before the AI/ML hype overtook the Data Mining hype.
-# 
-
-# In[193]:
-
-
-# Common imports
-
 from matplotlib.image import imread
-# import matplotlib as mpl
 import matplotlib.pyplot as plt
+# import matplotlib as mpl
 # import mpl_toolkits.mplot3d.axes3d as p3
 
 from sklearn.cluster import KMeans
@@ -35,60 +25,93 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 
-
-# ## K-means clustering
-# 
-# Let's use K-means and generate our own data since the book doesn't talk about creating any data for clustering.
-
-# In[26]:
-
-
-# Generate the dataset
-X, y = make_blobs(n_samples=500, n_features=2, centers=5, random_state=42)
-
-# X are the features, y is the correct cluster ids
+def load_blobs_data():
+    """ Create a dataset to load for clustering
+    Call with:
+    X, y = load_blobs_data()
+    """
+    X, y = make_blobs(n_samples=500, n_features=2, centers=5, random_state=42)
+    return X, y
 
 
-# In[24]:
+def plot_blobs(X, y, name=None):
+    """ Plot the blobs obtained earlier
+
+    name(String): A human-readable string used when saving plots. If
+                  a name is specified, the plot is saved, and not displayed on screen
+
+    Call with:
+    plot_blobs(X, y, name='blobs')
+    """
+    # And plot it
+    # scaled_color = y.astype(np.float32) / 10.0
+    fig = None
+    if (name != None):
+        fig = plt.figure()
+
+    plt.scatter(X[:,0], X[:, 1], marker='.')
+    plt.axis("on")
+
+    if (name == None):
+        plt.show()
+    else:
+        plt.savefig("images/" + name + ".png")
+        plt.close(fig)
 
 
-X[:,0].shape
+def cluster_k_means(X, k=5, y=None):
+    """ Fit k-means clustering
+    Call with:
+    kmeans = cluster_k_means(X, k=5)
+    or, if you have the labels:
+    kmeans = cluster_k_means(X, k=5, y=y)
+
+    """
+    kmeans=KMeans(n_clusters=k)
+    y_pred=kmeans.fit_predict(X)
+    score=accuracy_score(y_pred, y)
+    print("Accuracy score of this=", score)
+    return kmeans
+
+def plot_clusters(kmeans, X, name=None):
+    """Plot the clusters for the dataset.
+
+    If a name is specified, then the plot is saved, and not shown on the screen
+    Call with:
+    plot_clusters(kmeans, X, name='small_clusters')
+    """
+    fig = None
+    if (name != None):
+        fig = plt.figure()
+
+    plt.scatter(X[:,0], X[:, 1], color='green', marker='.')
+    plt.scatter(kmeans.cluster_centers_[:,0], kmeans.cluster_centers_[:,1], color='red')
+    plt.axis("on")
+
+    if (name == None):
+        plt.show()
+    else:
+        plt.savefig("images/" + name + ".png")
+        plt.close(fig)
 
 
-# In[40]:
+def run_all_09():
+    """ Run all Chapter 9 code
+    Call with:
+    run_all_09()
+    """
+    X, y = load_blobs_data()
+    plot_blobs(X, y, name='blobs1')
 
+    kmeans = cluster_k_means(X, k=5, y=y)
+    plot_clusters(kmeans, X, name='clusters1')
 
-# And plot it
-# scaled_color = y.astype(np.float32) / 10.0
-plt.scatter(X[:,0], X[:, 1], marker='.')
-plt.axis("on")
-plt.show()
+print ("Still work to do. Thanks")
 
+# ---------------------- Converted till here ----------------------------
 
-# In[31]:
-
-
-k=5
-kmeans = KMeans(n_clusters=k)
-y_pred=kmeans.fit_predict(X)
-accuracy_score(y_pred, y)
-
-
-# In[38]:
-
-
-get_ipython().run_line_magic('pinfo', 'plt.scatter')
-
-
-# In[39]:
-
-
-# And plot it
-# scaled_color = y.astype(np.float32) / 10.0
-plt.scatter(X[:,0], X[:, 1], color='green', marker='.')
-plt.scatter(kmeans.cluster_centers_[:,0], kmeans.cluster_centers_[:,1], color='red')
-plt.axis("on")
-plt.show()
+ignore="""
+# Common imports
 
 
 # That was pretty close. I suspect the accuracy is low because the IDs of the clusters don't match up, but the clusters are great. Let's find other measures to see how good this clustering is, since accuracy is not something we would have in real-world data.
@@ -269,7 +292,7 @@ kmeans.cluster_centers_.shape
 showClusterColors(kmeans, ladies.shape)
 
 
-# How big are the clusters, and how does the magic indexing operator cluster_centers_\[labels_\] work?
+# How big are the clusters, and how does the magic indexing operator cluster_centers_\     [labels_\     ] work?
 # 
 # Let's try to find out but not spend too much time because this requires a good handle on numpy foundations that I need to get at some point.
 # 
@@ -559,7 +582,7 @@ showImage(p[idx], X_train)
 #      * Mean vector (for the Gaussian distribution)
 #      * Covariance matrix (for the Gaussian distribution)
 # 
-# That will allow us to use the Gaussian distribution to predict outliers (outside $3 \sigma$) and to cluster.
+# That will allow us to use the Gaussian distribution to predict outliers (outside $3 \     sigma$) and to cluster.
 # 
 # You can initialize Gaussian Mixture Models with how many Gaussians to use, but there is
 # no good number to set this to.
@@ -583,7 +606,7 @@ showImage(p[idx], X_train)
 # * To help other methods like LogisticRegression, etc, to work better on labled instances.
 # * To reduce labeling work by finding "close" observations where the centroid can be labeled.
 # * To visualize an unknown database and see some structure in it.
-# * To find anomalies (observations that are outside $3\sigma$ of expectations)
+# * To find anomalies (observations that are outside $3\     sigma$ of expectations)
 # * To find novelties (observations not expected by the current model)
 # * To do image segmentation
 # * To reduce information/dimensions when (centroid + distance) can be a more compact representation.
@@ -608,15 +631,15 @@ showImage(p[idx], X_train)
 # Ex 6: Active learning would be useful when the algorithm works for most cases, but gets some observations horribly wrong. In these cases, you can cluster the new observations, and if they are too far from existing clusters then you manually label them. This focuses labeling effort on difficult cases where the algorithm would usually go wrong.
 # 
 # Ex 7: 
-# * To find anomalies (observations that are outside $3\sigma$ of expectations)
+# * To find anomalies (observations that are outside $3\    sigma$ of expectations)
 # * To find novelties (observations not expected by the current model)
 # 
 # Ex 8:
-#  Gaussians are extensions of Normal distributions in $n$ dimensions. So instead of a mean, you have a vector $\mu$ of means of dimension $n \times 1$. And instead of a single $\sigma$ variance, you have a covariance matrix $\Sigma$ of dimensions $n \times n$.
+#  Gaussians are extensions of Normal distributions in $n$ dimensions. So instead of a mean, you have a vector $\    mu$ of means of dimension $n \    times 1$. And instead of a single $\    sigma$ variance, you have a covariance matrix $\    Sigma$ of dimensions $n \    times n$.
 #  
 #  When you can model the input data as a collection of observations that are generated by drawing from a set of these Gaussians, you have a Gaussian Mixture Model.
 #  
-#  You use it to describe a dataset, to try to fit it, to try to estimate $\mu$ and $\Sigma$ and then to generate observations from the dataset.
+#  You use it to describe a dataset, to try to fit it, to try to estimate $\    mu$ and $\    Sigma$ and then to generate observations from the dataset.
 # 
 #  If you get this far, you can use it to detect anomalies.
 #  
@@ -832,7 +855,7 @@ drawFace(range(12), clusterOne)
 
 # Let's create clusters at different sizes
 
-# The range [50, 70) \union [100, 140)
+# The range [50, 70) \    u nion [100, 140)
 full_range = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160]
 for i in range(50,70): full_range.append(i) 
 for i in range(100,160): full_range.append(i) 
@@ -867,7 +890,7 @@ for i in full_range:
         score = silhouette_score(X_train, predictor.labels_)
         printout += "n_clusters = " + str(i)
         printout += ": Score on iteration " + str(iteration) + " is " + str(score)
-        printout += "\n"
+        printout += "\    n"
 
         # If this is a better model, over-write the previous one.
         if (score > scores[str(i)]):
@@ -902,7 +925,7 @@ plot_y = [scores[str(i)] for i in plot_x]
 plt.plot(plot_x, plot_y)
 
 
-# After increasing the search in the \[100,160\] range, we see that good cluster values are around 100 or 140. Since I only ran K-Means once the precision of the values is low, because K-Means depends on the starting point.
+# After increasing the search in the \     [100,160\     ] range, we see that good cluster values are around 100 or 140. Since I only ran K-Means once the precision of the values is low, because K-Means depends on the starting point.
 # 
 # I won't search for less than 40 clusters, since we know there are 40 faces. More clusters is better.
 # 
@@ -953,3 +976,4 @@ X_transformed = model.transform(X_train)
 
 
 
+"""
