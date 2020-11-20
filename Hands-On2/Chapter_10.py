@@ -45,6 +45,25 @@ print("TF version ", tf.__version__)
 print("Keras version ", keras.__version__)
 
 
+def load_digits_mnist():
+    """Load the (digits) MNIST data. Should only need to be called once.
+
+    Call with:
+    X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_digits_mnist()
+    """
+    (X_train_full, y_train_full), (X_test, y_test) = keras.datasets.mnist.load_data()
+
+    debug = False
+    if (debug):
+        print (X_train_full.shape)
+        print (X_train_full.dtype)
+
+    X_valid, X_train = X_train_full[:5000] / 255.0, X_train_full[5000:] / 255.0
+    y_valid, y_train = y_train_full[:5000]        , y_train_full[5000:]
+    X_test = X_test / 255.0
+
+
+
 def load_fashion_mnist():
     """Load the fashion MNIST data. Should only need to be called once.
 
@@ -149,39 +168,36 @@ def fit_model(model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0):
     return history
 
 
-def plot_training(history, name, show=False):
+def plot_training(history, name=None):
     """Plots the model training history
 
     history: History obtained when training models
 
     name(String): A human-readable string used when saving models. If
-    show=True, this value is ignored.
-
-    show(boolean): Set to true to see the image in the UI. False by
-    default.
+    this value is provided, then the .
 
     Call with:
-    plot_training(history, "simplest", show=False)
 
+    plot_training(history, name="simplest") # Save to file called "simplest"
+
+    plot_training(history) # show on screen
     """
+    plt = None
 
-    if (show):
-        pd.DataFrame(history.history).plot(figsize=(8,5))
-        plt.grid(True)
-        plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-        plt.ylabel("Accuracy or Validation error")
-        plt.xlabel("Training epoch")
+    if (name != None):
+        fig = plt.figure()
+
+    pd.DataFrame(history.history).plot(figsize=(8,5))
+    plt.grid(True)
+    plt.gca().set_ylim(0,1) # Y axis set to [0,1]
+    plt.ylabel("Accuracy or Validation error")
+    plt.xlabel("Training epoch")
+
+    if (name == None):
         plt.show()
     else:
-        fig = plt.figure()
-        pd.DataFrame(history.history).plot(figsize=(8,5))
-        plt.grid(True)
-        plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-        plt.xlabel("Training epoch")
-        plt.ylabel("Accuracy or Validation error")
         plt.savefig("images/" + name + ".png")
         plt.close(fig)
-
 
 def save_model(model, name):
     """ Save the model, and a plot of the model's internals
@@ -189,9 +205,9 @@ def save_model(model, name):
     Call with:
     save_model(simplest, "simplest")
     """
-    keras.utils.plot_model(model, to_file='images/' + name + '.png',
-                       show_shapes=False, show_layer_names=True,
-                       rankdir='TB', expand_nested=False, dpi=96)
+    keras.utils.plot_model(model, to_file='images/model_' + name + '.png',
+                           show_shapes=False, show_layer_names=True,
+                           rankdir='TB', expand_nested=False, dpi=96)
 
     model.save('saved_models/' + name)
 
@@ -234,7 +250,7 @@ def load_housing_data():
     housing = fetch_california_housing()
     X_train_full, testX, y_train_full, testy = train_test_split(
         housing.data, housing.target)
-    
+
     X_train, X_valid, y_train, y_valid = train_test_split(
         X_train_full, y_train_full)
 
@@ -325,20 +341,22 @@ def run_all_10():
 
     # Load the dataset and ensure it is fine
     X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_fashion_mnist()
-    print_debug(X_train, y_train, class_names)
+
+    # This needs X windows, let's ignore it
+    # print_debug(X_train, y_train, class_names)
 
 
     # Now create all the datasets. This one is the simplest naive model
     simplest = create_simplest_model()
     history = fit_model(simplest, X_train, y_train, X_valid, y_valid, epochs=30)
-    plot_training(history, "simplest-30", show=False)
+    plot_training(history, "simplest-30")
     save_model(simplest, "simplest")
 
     # Run for longer. Same model as before, trained for longer.
     simplest = create_simplest_model()
     history = fit_model(simplest, X_train, y_train, X_valid, y_valid, epochs=300)
     # This should look overfitted. The accuracy is 100% but the validation accuracy is 91%.
-    plot_training(history, "simplest-300", show=False)
+    plot_training(history, "simplest-300")
 
 
     # Got a learning rate example from here: https://keras.io/api/optimizers/
@@ -349,27 +367,27 @@ def run_all_10():
 
     model_lr = create_simplest_model(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule))
     history_lr = fit_model(model_lr, X_train, y_train, X_valid, y_valid, epochs=30)
-    plot_training(history_lr, "lr-30", show=False)
+    plot_training(history_lr, "lr-30")
 
 
     deeper = create_simplest_model([300, 300, 100])
     history_deeper = fit_model(deeper, X_train, y_train, X_valid, y_valid, epochs=30)
-    plot_training(history_deeper, "deeper-30", show=False)
+    plot_training(history_deeper, "deeper-30")
     save_model(deeper, 'fashion_deeper')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=30)
-    plot_training(history_deeper, "constrained-30", show=False)
+    plot_training(history_deeper, "constrained-30")
     save_model(constrained, 'fashion_constrained')
 
     constrained = create_simplest_model([300, 50, 100])
     history_constrained = fit_model(constrained, X_train, y_train, X_valid, y_valid, epochs=300)
-    plot_training(history_deeper, "constrained-300", show=False)
+    plot_training(history_deeper, "constrained-300")
 
 
     superdeep = create_simplest_model([300, 100, 100, 100, 100, 100])
     history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
-    plot_training(history_deeper, "superdeep-30", show=False)
+    plot_training(history_deeper, "superdeep-30")
 
     X_train, y_train, X_valid, y_valid, testX, testy, scaler = load_housing_data()
     housing = create_housing_model(X_train, y_train, X_valid, y_valid)
@@ -414,208 +432,7 @@ def run_all_10():
     print ("Best params: ", rnd_cv.best_params_)
 
 
-# -------------- converted till here --------------------
-print ("Stopping early, still work left to do")
+print ("Fully done! Thanks")
 
+# -------------- All converted --------------------
 
-ignore_ = """
-Do not sys.exit(0) because that makes ipython think our %run failed, which it did not.
-
-
-
-# Or, you can train a very computationally intensive Randomized or GridSearch here. I don't fully understand why Randomized Search is better here, but let's listen to the book and try it anyway
-
-# In[15]:
-
-
-
-
-end_time - start_time
-
-
-# In[53]:
-
-
-(X_train_full, y_train_full), (X_test, y_test) = keras.datasets.mnist.load_data()
-
-
-# In[5]:
-
-
-X_train_full.shape
-
-
-# In[6]:
-
-
-y_train_full.shape
-
-
-# In[8]:
-
-
-X_train_full[0]
-
-
-# Split into training and validation. Divide by 255.0 because the input data is in range \[0, 255\]. We want it in the range \(0, 1\)
-
-# In[9]:
-
-
-X_valid, X_train = X_train_full[:5000] / 255.0, X_train_full[5000:] / 255.0
-y_valid, y_train = y_train_full[:5000]        , y_train_full[5000:]
-X_test = X_test / 255.0
-
-
-# In[10]:
-
-
-# model = keras.models.Sequential()
-# model.add(keras.layers.Flatten(input_shape=[28, 28]))
-# model.add(keras.layers.Dense(300, activation="relu"))
-# model.add(keras.layers.Dense(100, activation="relu"))
-# model.add(keras.layers.Dense(10, activation="softmax"))
-
-# This is another way of creating it:
-mnist_model = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="relu"),
-    keras.layers.Dense(100, activation="relu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-
-
-# In[84]:
-
-
-mnist_model.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-
-history = mnist_model.fit(X_train, y_train, epochs=30,
-                   validation_data=(X_valid, y_valid))
-
-
-# In[85]:
-
-
-import pandas as pd
-
-pd.DataFrame(history.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# Validation accuracy is 97.96%, close enough to the 98% the book was yearning for.  Let's check this on the test set.
-
-# In[86]:
-
-
-y_pred = mnist_model.predict(X_test)
-
-
-# In[89]:
-
-
-mnist_model.evaluate(X_test, y_test)
-
-
-# Test loss is 0.07, and test accuracy is 97.79% Can experiment with a few other combinations to find the ideal model.
-#
-# Using SELU rather than RELU
-
-# In[11]:
-
-
-# model = keras.models.Sequential()
-# model.add(keras.layers.Flatten(input_shape=[28, 28]))
-# model.add(keras.layers.Dense(300, activation="relu"))
-# model.add(keras.layers.Dense(100, activation="relu"))
-# model.add(keras.layers.Dense(10, activation="softmax"))
-
-# This is another way of creating it:
-mnist_model = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="selu"),
-    keras.layers.Dense(100, activation="selu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-
-
-# In[12]:
-
-
-mnist_model.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-
-history = mnist_model.fit(X_train, y_train, epochs=30,
-                          validation_data=(X_valid, y_valid),
-                          verbose=0)
-
-
-# In[13]:
-
-
-mnist_model.evaluate(X_test, y_test)
-
-
-# 97.48\% accuracy, not bad.
-
-# In[14]:
-
-
-import pandas as pd
-
-pd.DataFrame(history.history).plot(figsize=(8,5))
-plt.grid(True)
-plt.gca().set_ylim(0,1) # Y axis set to [0,1]
-plt.show()
-
-
-# Hmm, that was slightly worse. The graphs indicate that validation accuracy was still improving, and perhaps we need to iterate for longer.
-
-# In[15]:
-
-
-# model = keras.models.Sequential()
-# model.add(keras.layers.Flatten(input_shape=[28, 28]))
-# model.add(keras.layers.Dense(300, activation="relu"))
-# model.add(keras.layers.Dense(100, activation="relu"))
-# model.add(keras.layers.Dense(10, activation="softmax"))
-
-# This is another way of creating it:
-mnist_model = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(300, activation="selu"),
-    keras.layers.Dense(300, activation="selu"),
-    keras.layers.Dense(100, activation="selu"),
-    keras.layers.Dense(10, activation="softmax")
-])
-
-
-# In[16]:
-
-
-mnist_model.compile(loss="sparse_categorical_crossentropy",
-             optimizer="sgd",
-             metrics=["accuracy"])
-
-history = mnist_model.fit(X_train, y_train, epochs=100,
-                          validation_data=(X_valid, y_valid),
-                          verbose=0)
-
-
-# In[17]:
-
-
-mnist_model.evaluate(X_test, y_test)
-
-
-# 97.97\%. I was hoping for higher, but this is fine too.
-
-# # Done with all exercises
-
-# In[ ]:
-"""
