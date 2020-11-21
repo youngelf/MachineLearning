@@ -182,7 +182,7 @@ def plot_training(history, name=None):
 
     plot_training(history) # show on screen
     """
-    plt = None
+    fig = None
 
     if (name != None):
         fig = plt.figure()
