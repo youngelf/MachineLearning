@@ -4,7 +4,7 @@
 # Common imports
 import matplotlib.cm as cm
 from matplotlib.image import imread
-import matplotlib as mpl
+import matplotlib
 import mpl_toolkits.mplot3d.axes3d as p3
 
 import numpy as np
