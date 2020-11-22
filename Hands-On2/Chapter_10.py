@@ -2,8 +2,9 @@
 
 from datetime import datetime
 import matplotlib.cm as cm
+import matplotlib
+
 from matplotlib.image import imread
-import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -12,6 +13,7 @@ import pydot
 
 from scipy.stats import reciprocal
 
+from sklearn.base import clone
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
 
@@ -185,8 +187,17 @@ def plot_training(history, name=None):
     fig = None
 
     if (name != None):
-        fig = plt.figure()
+        # Use the Anti-Grain-Geometry (file-based) backend
+        matplotlib.use('Agg')
+        print ("Using file-based backend")
+        import matplotlib.pyplot as plt
+    else:
+        # Use the Tk (X-based) backend
+        matplotlib.use('TkAgg')
+        print ("Using X-based backend")
+        import matplotlib.pyplot as plt
 
+    fig = plt.figure()
     pd.DataFrame(history.history).plot(figsize=(8,5))
     plt.grid(True)
     plt.gca().set_ylim(0,1) # Y axis set to [0,1]
@@ -260,7 +271,7 @@ def load_housing_data():
     X_train = scaler.fit_transform(X_train)
     # Always use the same scaler for the X_validation and X_test!
     X_valid = scaler.transform(X_valid)
-    X_test = scaler.transform(X_test)
+    testX = scaler.transform(testX)
 
     return X_train, y_train, X_valid, y_valid, testX, testy, scaler
 
@@ -339,6 +350,7 @@ def run_all_10():
     Takes a few hours(!) to run since we are making many models
     """
 
+    ignore = '''
     # Load the dataset and ensure it is fine
     X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_fashion_mnist()
 
@@ -388,7 +400,8 @@ def run_all_10():
     superdeep = create_simplest_model([300, 100, 100, 100, 100, 100])
     history_superdeep = fit_model(superdeep, X_train, y_train, X_valid, y_valid, epochs=30)
     plot_training(history_deeper, "superdeep-30")
-
+'''
+    
     X_train, y_train, X_valid, y_valid, testX, testy, scaler = load_housing_data()
     housing = create_housing_model(X_train, y_train, X_valid, y_valid)
     history, mse_test = fit_housing(housing, X_train, y_train, X_valid, y_valid, testX, testy, epochs=30)
@@ -412,10 +425,26 @@ def run_all_10():
 
     estimator = keras.wrappers.scikit_learn.KerasClassifier(
         build_fn=create_keras_classifier_model, n_classes=2, class_weight={0: 1, 1:3})
-    clone(estimator)
+
+    # The clone(estimator) call fails. Detailed notes are in the
+    # notebook, but the summary is that sklearn and TF/Keras don't
+    # play well. So you can get an estimator you cannot clone. You can
+    # run the full training, and get optimal parameters, but not the
+    # saved estimator. Instead, you have to do a two-pass algorithm:
+    # first getting the best params (refit=False) and then fitting
+    # another estimator with those params you got earlier, and hope
+    # you get a similar estimator: which you might not because model
+    # training is not guaranteed to give you the same results on
+    # subsequent runs.
+    
+    # clone(estimator)
 
     start_time = datetime.now()
-    # The best estimator is only available if we 'refit=True'
+
+    # The best estimator is only available if we 'refit=True', and we
+    # cannot do that because it requires clone() to work. So we do
+    # refit=False, and get the best params, and be satisfied with
+    # that.
     rnd_cv = RandomizedSearchCV(keras_reg, param_distribs,
                                 n_iter=500, cv=3, refit=False)
 
