@@ -7,7 +7,6 @@
 import matplotlib.cm as cm
 from matplotlib.image import imread
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 
 import numpy as np
@@ -231,7 +230,19 @@ def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, s
     history = model.fit(X_train, y_train, epochs=epochs, verbose=verbose,
                         validation_data=(X_valid, y_valid))
 
-    # Now plot the history to file
+    if (showFig):
+        # Use the Tk (X-based) backend
+        matplotlib.use('TkAgg')
+        print ("Using X-based backend")
+        import matplotlib.pyplot as plt
+    else:
+        # Use the Anti-Grain-Geometry (file-based) backend
+        matplotlib.use('Agg')
+        print ("Using file-based backend")
+        import matplotlib.pyplot as plt
+
+    # Plot the history
+    fig = plt.figure()
     pd.DataFrame(history.history).plot(figsize=(8,5))
     plt.grid(True)
     plt.gca().set_ylim(0,1) # Y axis set to [0,1]
@@ -240,6 +251,7 @@ def fit(name, model, X_train, y_train, X_valid, y_valid, epochs=30, verbose=0, s
         plt.show()
     else:
         plt.savefig('images/' + name + '.png')
+        plt.close(fig)
 
     return history
 
