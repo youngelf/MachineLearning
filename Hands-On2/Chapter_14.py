@@ -23,7 +23,7 @@ def train_test_split_flowers():
     """Split the database into training and testing
 
     Call with:
-    train, test, valid = train_test_split_flowers()
+    train, valid, test = train_test_split_flowers()
     """
 
     # This is what the book asked for, but it doesn't work.
@@ -36,7 +36,7 @@ def train_test_split_flowers():
     # The last 75% as test
     train_set = tfds.load("tf_flowers", split='train[-75%:]', as_supervised=True)
 
-    return test_set, valid_set, train_set
+    return train_set, valid_set, test_set
 
 
 def preprocess_xception(image, label):
@@ -49,10 +49,25 @@ def preprocess_xception(image, label):
     final_image = keras.applications.xception.preprocess_input(resized_image)
     return final_image, label
 
+def evaluate(model, test_set):
+    """ Evaluate the model on the test data.
+
+    Call with:
+    loss, accuracy = evaluate(simplest, test_set)
+
+    """
+
+    (loss, accuracy) = model.evaluate(test_set)
+
+    print ("Loss is %f" % loss)
+    print ("Accuracy is %f" % accuracy)
+
+    return loss, accuracy
+
 def run_all_14():
     dataset_all, info_all = load_flowers_data()
     n_classes = info_all.features["label"].num_classes
-    train_set, test_set, valid_set = train_test_split_flowers()
+    train_set, valid_set, test_set = train_test_split_flowers()
 
     # Preprocess the data
     batch_size = 32
@@ -89,7 +104,7 @@ def run_all_14():
                   metrics=["accuracy"])
     history = model.fit(train_set, epochs=5, validation_data=valid_set)
     
-
+    loss, accuracy = evaluate(model, test_set)
 
     
     
