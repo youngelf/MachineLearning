@@ -106,5 +106,12 @@ def run_all_14():
     
     loss, accuracy = evaluate(model, test_set)
 
+    # I should try training it differently, more epochs, less epochs.
+
+    # I should also try evaluating the error half-way (before
+    # unfreezing) to see what impact it has on the model quality.
+
+    # Finally, I should try unfreezing just the top layers, and see
+    # what works better.
     
     
