@@ -16,7 +16,7 @@ def load_flowers_data():
     class_names = info.features["label"].names
     n_classes = info.features["label"].num_classes
     print ("Number of classes: ", n_classes)
-    
+
     return dataset, info
 
 def train_test_split_flowers():
@@ -77,12 +77,12 @@ def run_all_14():
     test_set = test_set.map(preprocess_xception).batch(batch_size).prefetch(2)
 
     # Load the Xcpetion model, pretrained on ImageNet
-    base_model = keras.applications.Xception(weights="imagenet", 
+    base_model = keras.applications.Xception(weights="imagenet",
                                              include_top=False)
     avg = keras.layers.GlobalAveragePooling2D()(base_model.output)
     output = keras.layers.Dense(n_classes, activation="softmax")(avg)
     model = keras.Model(inputs=base_model.input, outputs=output)
-    
+
     # Freeze the base (pretrained) layers, at least initially
     for layer in base_model.layers:
         layer.trainable = False
@@ -103,7 +103,7 @@ def run_all_14():
     model.compile(loss="sparse_categorical_crossentropy", optimizer=optimizer,
                   metrics=["accuracy"])
     history = model.fit(train_set, epochs=5, validation_data=valid_set)
-    
+
     loss, accuracy = evaluate(model, test_set)
 
     # I should try training it differently, more epochs, less epochs.
@@ -113,5 +113,78 @@ def run_all_14():
 
     # Finally, I should try unfreezing just the top layers, and see
     # what works better.
-    
-    
+
+
+
+# Exercises here:
+
+# Exercise 9: Create a CNN for digits mnist
+import Chapter_10 as c10
+
+
+def prepare_digits_mnist_data(X_train, X_valid, X_test, debug=False):
+    if (debug):
+        print ("X_train shape = ", X_train.shape)
+        print ("X_valid shape = ", X_valid.shape)
+        print ("X_test shape = ", X_test.shape)
+
+    X_train = X_train.reshape(55000,28,28,1)
+    X_valid = X_valid.reshape(5000,28,28,1)
+    X_test = X_test.reshape(10000,28,28,1)
+    return X_train, X_valid, X_test
+
+
+# Test out creating a model. This will need some iterations.
+def create_e9_model(optimizer="sgd"):
+    deep_model = keras.models.Sequential([
+        keras.layers.Conv2D(32, 4, activation="relu", padding="same",
+                            input_shape=(28, 28, 1), name="input"),
+        keras.layers.MaxPooling2D(1,name="firstPool"),
+        keras.layers.Conv2D(128, 3, activation="relu", padding="same",
+                            name="first_conv_1"),
+        keras.layers.Conv2D(128, 3, activation="relu", padding="same",
+                            name="first_conv_2"),
+
+        keras.layers.MaxPooling2D(1, name="secondPool"),
+        keras.layers.Conv2D(256, 3, activation="relu", padding="same",
+                            name="second_conv_1"),
+        keras.layers.Conv2D(256, 3, activation="relu", padding="same",
+                            name="second_conv_2"),
+
+        keras.layers.MaxPooling2D(1, name="thirdPool"),
+
+        keras.layers.Flatten(name="flatten"),
+        keras.layers.Dense(128, activation="relu", name="pre-bottneck"),
+
+        keras.layers.Dropout(0.5, name="bottleneckDropout"),
+        keras.layers.Dense(64, activation="relu", name="bottleneck"),
+
+        keras.layers.Dropout(0.5, name="outputDropout"),
+        keras.layers.Dense(10, activation="softmax", name="output"),
+    ])
+
+    deep_model.compile(loss="sparse_categorical_crossentropy",
+                      optimizer=optimizer,
+                      metrics=["accuracy"])
+
+    return deep_model
+
+def fit_e9_model(model, X_train, y_train, X_valid, y_valid, epochs):
+    history_conv = model.fit(x=X_train, y=y_train, batch_size=32, validation_data=[X_valid, y_valid],
+                             epochs=epochs, verbose=0)
+    return history_conv
+
+def plot_e9_history(history, name):
+    c10.plot_training(history, name, show=True)
+
+
+def run_c14_e9():
+    """ Run Chapter 14, Exercise 9 """
+    X_train, X_valid, X_test, y_train, y_valid, y_test = c10.load_digits_mnist(debug=True)
+    X_train, X_valid, X_test = prepare_digits_mnist_data(X_train, X_valid, X_test)
+
+    # Create the model and train it
+    model = create_e9_model()
+    history = fit_e9_model(model, X_train, y_train, X_valid, y_valid, epochs=10)
+    plot_e9_history(history, "naive_deep_mnist")
+

@@ -46,24 +46,29 @@ from tensorflow import keras
 print("TF version ", tf.__version__)
 print("Keras version ", keras.__version__)
 
+print("Newest")
 
-def load_digits_mnist():
+def load_digits_mnist(debug=False):
     """Load the (digits) MNIST data. Should only need to be called once.
 
+    The digits are returned with a single row containing a 28x28 tensor, which is the digits.
+
+    This returns 55,000 training instances, 5,000 validation instances, and 10,000 test instances
     Call with:
-    X_train, X_valid, X_test, y_train, y_valid, y_test, class_names = load_digits_mnist()
+    X_train, X_valid, X_test, y_train, y_valid, y_test = load_digits_mnist()
     """
     (X_train_full, y_train_full), (X_test, y_test) = keras.datasets.mnist.load_data()
-
-    debug = False
-    if (debug):
-        print (X_train_full.shape)
-        print (X_train_full.dtype)
 
     X_valid, X_train = X_train_full[:5000] / 255.0, X_train_full[5000:] / 255.0
     y_valid, y_train = y_train_full[:5000]        , y_train_full[5000:]
     X_test = X_test / 255.0
 
+    if (debug):
+        print ("X_train shape = ", X_train.shape)
+        print ("X_valid shape = ", X_valid.shape)
+        print ("X_test shape = ", X_test.shape)
+
+    return X_train, X_valid, X_test, y_train, y_valid, y_test
 
 
 def load_fashion_mnist():
