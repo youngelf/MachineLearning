@@ -91,7 +91,13 @@ def run_all_14():
     optimizer = keras.optimizers.SGD(lr=0.2, momentum=0.9, decay=0.01)
     model.compile(loss="sparse_categorical_crossentropy", optimizer=optimizer,
                   metrics=["accuracy"])
-    history = model.fit(train_set, epochs=5, validation_data=valid_set)
+    history = model.fit(train_set, epochs=5, validation_data=valid_set, verbose=0)
+
+    # Evaluate the error half-way (before unfreezing) to see what
+    # impact it has on the model quality.
+    loss, accuracy = evaluate(model, test_set)
+    print ("First pass: Loss is %f" % loss)
+    print ("First pass: Accuracy is %f" % accuracy)
 
     # Now you can unfreeze the base layers.
     for layer in base_model.layers:
@@ -102,10 +108,13 @@ def run_all_14():
     optimizer = keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.001)
     model.compile(loss="sparse_categorical_crossentropy", optimizer=optimizer,
                   metrics=["accuracy"])
-    history = model.fit(train_set, epochs=5, validation_data=valid_set)
+    history = model.fit(train_set, epochs=5, validation_data=valid_set, verbose=0)
 
+    # Evaluate the error at the end (after unfreezing) to see what
+    # impact it has on the model quality.
     loss, accuracy = evaluate(model, test_set)
-
+    print ("End: Loss is %f" % loss)
+    print ("End: Accuracy is %f" % accuracy)
     # I should try training it differently, more epochs, less epochs.
 
     # I should also try evaluating the error half-way (before
@@ -175,7 +184,7 @@ def fit_e9_model(model, X_train, y_train, X_valid, y_valid, epochs):
     return history_conv
 
 def plot_e9_history(history, name):
-    c10.plot_training(history, name, show=True)
+    c10.plot_training(history, name, show=False)
 
 
 def run_c14_e9():
