@@ -1,0 +1,319 @@
+[  OK  ] Listening on Load/Save RF …itch Status /dev/rfkill Watch.
+         Mounting /boot...
+         Starting Make File System …3004-4e30-87dc-ed33fbf4dbfd...
+[  OK [    6.490742] EXT4-fs (mmcblk0p2): mounting ext2 file system using the ext4 subsystem
+ ] Reached target Sound Card.
+         Starting Load/Save RF Kill Swi[    6.507001] EXT4-fs (mmcblk0p2): warning: mounting unchecked fs, running e2fsck is recommended
+tch Status..[    6.517701] EXT4-fs (mmcblk0p2): mounted filesystem without journal. Opts: (null)
+.
+[  OK  ] Started Load/Save RF Kill Switch Status.
+[  OK  ] Mounted /boot.
+[  OK  ] Started Make File System o…9-3004-4e30-87dc-ed33fbf4dbfd.
+         Starting File System Check…3004-4e30-87dc-ed33fbf4dbfd...
+[  OK  ] Started File System Check …9-3004-4e30-87dc-ed33fbf4dbfd.
+         Mounting /home...
+[    6.644192] EXT4-fs (mmcblk0p3): mounted filesystem with ordered data mode. Opts: (null)
+[  OK  ] Mounted /home.
+[  OK  ] Reached target Local File Systems.
+         Starting Raise network interfaces...
+         Starting Scripts that should be run only once...
+         Starting Create Volatile Files and Directories...
+[  OK  ] Started Create Volatile Files and Directories.
+[  OK  ] Started Entropy daemon using the HAVEGE algorithm.
+         Starting Update UTMP about System Boot/Shutdown...
+         Starting Network Time Synchronization...
+[    6.791848] net lo: No handler found (wireless_process_ioctl)
+[  OK  ] Started Update UTMP about System Boot/Shutdown.
+         Starting Update UTMP about System Runlevel Changes...
+[  OK  ] Started Update UTMP about System Runlevel Changes.
+[  OK  ] Started Raise network interfaces.
+[  OK  ] Reached target Network.
+[  OK  ] Started Scripts that should be run only once.
+[  OK  ] Started Network Time Synchronization
+
+You are in emergency mode. After logging in, type "journalctl -xb" to view
+system logs, "systemctl reboot" to r
+Cannot open access to console, the root account is locked.
+See sulogin(8) man page for more details.
+
+
+Press Enter to continue.
+[    8.952386] BTMTK_init
+[    8.954801] proc initialized
+[    8.954838] major number:244
+[    8.960595] BT_majorfwlog number: 243
+[    8.964266] BT_chrdev driver(major 244) installed.
+[    8.969052] BT_chrdevfwlog driver(major 243) installed.
+[    8.974661] BTMTK_init: BT_major 244, BT_majorfwlog 243
+[    8.979958] BTMTK_init: devID 255852544, devIDfwlog 254803968
+[    8.985832] btmtk_sdio_probe Mediatek Bluetooth driver Version=v0.0.0.53_2018072701_YOCTO
+[    8.993998] vendor=0x37a, device=0x7668, class=255, fn=2, support func_num 2
+[    9.001033] btmtk_sdio_probe chip_id is 7668
+[    9.005380] before claim irq read SDIO_CCCR_IENx 0, func num 2
+[    9.011246] sdio_claim_irq success: ret=0
+[    9.015274] after claim irq read SDIO_CCCR_IENx 0
+[    9.020058] SDIO FUNC2 IO port: 0xf07668
+[    9.024056] btmtk_sdio_enable_host_int read CSDIOCSR is 0x1
+[    9.029701] btmtk_sdio_enable_host_int write CSDIOCSR is 0x5
+[    9.035351] btmtk_sdio_download_fw begin
+[    9.041579] btmtk_sdio_send_wohci retrun  0x0
+[    9.046021] btmtk_sdio_bt_memRegister_read: read cr 80000000
+[    9.066942] btmtk_sdio_bt_memRegister_read: retrytime 299
+[    9.072370] btmtk_sdio_bt_memRegister_read: ger cr 0x80000000 value 0x8b11
+[    9.079231] btmtk_sdio_download_rom_patch uhwversion 0x8b11
+[    9.084794] btmtk_sdio_download_rom_patch request_firmware(firmware name mt7668_patch_e2_hdr.bin)
+[    9.094044] btmtk_sdio_download_rom_patch patch is ready no need load patch again
+[    9.101577] btmtk_sdio_download_rom_patch read chipid =  f07668
+[    9.107580] btmtk_sdio_bt_set_power: onoff 1
+[    9.217766] btmtk_eeprom_bin_file: 7668 series
+[    9.357755] btmtk_set_eeprom2ctrler: set BDAddress(F4-F5-E8-96-AD-3E) OK
+[    9.469757] btmtk_set_eeprom2ctrler: set radio(BT/BLE default power: 5/5 MAX power: 5) OK
+[    9.597934] btmtk_sdio_recv_rx_data: retry_count = 0,timeout
+[    9.721886] btmtk_sdio_recv_rx_data: retry_count = 0,timeout
+[    9.833771] btmtk_set_eeprom2ctrler: set power offset(FE FD FD FD FC FB) OK
+[    9.945718] btmtk_set_eeprom2ctrler: set XTAL(0xAB 00) OK
+[    9.951171] btmtk_sdio_set_sleep begin
+[    9.958350] btmtk_sdio_set_write_clear write CHCR 0x00000002
+[    9.964053] btmtk_sdio_set_write_clear read CHCR 0x00000002
+[    9.969609] btmtk_sdio_set_write_clear write clear
+[    9.974511] btmtk_sdio_set_i2s_slave
+[    9.981311] btmtk_sdio_read_pin_mux_setting
+[    9.988789] btmtk_sdio_write_pin_mux_setting begin
+[    9.996900] btmtk_sdio_read_pin_mux_setting
+[   10.004319] confirm pinmux 22220000
+[   10.007807] btmtk_add_card begin
+[   10.011035] Starting kthread...
+[   10.014349] main_thread begin 50
+[   10.017626] btmtk_service_main_thread probe_ready 0 delay 10ms~15ms
+[   10.019550] btmtk_sdio_probe normal end
+[   10.027923] SDIO Driver Registration Success
+[   10.038438] Bluetooth: hci0: unexpected event for opcode 0xfcd1
+[   33.757570] usb0_vbus: disabling
+[   33.760811] usb0_vbus_old: disabling
+[   33.764430] backlight_vbus: disabling
+[   33.768203] ldo_vm25: disabling
+
+
+hit enter repeatedly to get to the uboot prompt.
+
+'help' showed that there was a 'fastboot usb', but it needed a device
+
+There 'printenv' showed that 'fastboot usb 0' is the way to do this, so I ran that.
+
+'fastboot usb 0'
+
+u-boot=> 
+u-boot=> printenv
+baudrate=115200
+boot_partition=2
+bootcmd=gpio input 42;if test $? -eq 0 || test "${force_fastboot}" -eq 1; then setenv force_fastboot 0; saveenv;gpio clear 19;gpio set 18;run fastboot;run mmcboot;else run mmcboot;fi
+bootdelay=2
+evt2_board=1
+fastboot=fastboot usb 0
+fdtcontroladdr=5fb8ea30
+force_fastboot=0
+kerneladdr=0x4A000000
+mmcboot=mmc dev ${mmcdev};setenv bootargs ${bootargs} root=PARTUUID=02f36a4f-4562-46b2-bbec-bfc1682f9e92 rootwait; ext2load mmc ${mmcdev}:2 0x4C000000 boot.scr;source; 
+mmcdev=0
+serial#=479070024791121002180001733063824812
+stderr=serial@11005000
+stdin=serial@11005000
+stdout=serial@11005000
+tftpboot=set ipaddr 192.168.0.100;tftpboot ${kerneladdr} 192.168.0.1:fitImage;bootm ${kerneladdr};
+
+Environment size: 719/4092 bytes
+u-boot=> fastboot usb 0
+musb-hdrc: peripheral reset irq lost!
+Starting download of 34304 bytes
+
+downloading of 34304 bytes finished
+fastboot_mmc_flash_write: updating MBR, Primary and Backup GPT(s)
+........ success
+Starting download of 90044 bytes
+
+downloading of 90044 bytes finished
+Flashing Raw Image
+........ wrote 90112 bytes to 'mmc0boot0'
+Starting download of 4096 bytes
+
+downloading of 4096 bytes finished
+Flashing Raw Image
+........ wrote 4096 bytes to 'mmc0boot1'
+** Unrecognized filesystem type **
+Starting download of 810218 bytes
+......
+downloading of 810218 bytes finished
+Flashing Raw Image
+........ wrote 810496 bytes to 'bootloaders'
+Erasing blocks 9216 to 271360 due to alignment
+........ erased 134217728 bytes from 'boot'
+Starting download of 27121268 bytes
+..........................................................................
+..........................................................................
+..........................................................
+downloading of 27121268 bytes finished
+Flashing sparse image at offset 9216
+Flashing Sparse Image
+........ wrote 134217728 bytes to 'boot'
+Erasing blocks 4465664 to 15268864 due to alignment
+........ erased 5531238400 bytes from 'rootfs'
+Starting download of 65246960 bytes
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+.....................................................
+downloading of 65246960 bytes finished
+Flashing sparse image at offset 4465664
+Flashing Sparse Image
+........ wrote 180355072 bytes to 'rootfs'
+Starting download of 64358336 bytes
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+...............................................
+downloading of 64358336 bytes finished
+Flashing sparse image at offset 4465664
+Flashing Sparse Image
+........ wrote 72171520 bytes to 'rootfs'
+Starting download of 64881084 bytes
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+...................................................
+
+Stuck here for some time.
+
+
+
+But flash still fails:
+
+
+$ bash flash.sh 
+Sending 'mmc0' (33 KB)                             OKAY [  0.014s]
+Writing 'mmc0'                                     OKAY [  0.081s]
+Finished. Total time: 0.103s
+Sending 'mmc0boot0' (87 KB)                        OKAY [  0.612s]
+Writing 'mmc0boot0'                                OKAY [  0.078s]
+Finished. Total time: 0.698s
+Sending 'mmc0boot1' (4 KB)                         OKAY [  0.006s]
+Writing 'mmc0boot1'                                OKAY [  0.073s]
+Finished. Total time: 0.088s
+Sending 'bootloaders' (791 KB)                     OKAY [  4.418s]
+Writing 'bootloaders'                              OKAY [  0.031s]
+Finished. Total time: 4.456s
+Invalid sparse file format at header magic
+Sending sparse 'boot' 1/1 (26485 KB)               OKAY [ 38.412s]
+Writing 'boot'                                     OKAY [  3.798s]
+Finished. Total time: 42.278s
+Sending sparse 'rootfs' 1/28 (63717 KB)            OKAY [221.210s]
+Writing 'rootfs'                                   FAILED (remote: 'Unknown chunk type')
+fastboot: error: Command failed
+Failed to execute '/tmp/X/fastboot flash rootfs /tmp/tmp.A1dqwUvazL/rootfs_arm64.img'
+
+
+
+
+u-boot=> fastboot usb 0
+musb-hdrc: peripheral reset irq lost!
+Starting download of 34304 bytes
+
+downloading of 34304 bytes finished
+fastboot_mmc_flash_write: updating MBR, Primary and Backup GPT(s)
+........ success
+Starting download of 90044 bytes
+
+downloading of 90044 bytes finished
+Flashing Raw Image
+........ wrote 90112 bytes to 'mmc0boot0'
+Starting download of 4096 bytes
+
+downloading of 4096 bytes finished
+Flashing Raw Image
+........ wrote 4096 bytes to 'mmc0boot1'
+Starting download of 810218 bytes
+......
+downloading of 810218 bytes finished
+Flashing Raw Image
+........ wrote 810496 bytes to 'bootloaders'
+Starting download of 27121268 bytes
+..........................................................................
+..........................................................................
+..........................................................
+downloading of 27121268 bytes finished
+Flashing sparse image at offset 9216
+Flashing Sparse Image
+........ wrote 134217728 bytes to 'boot'
+Starting download of 65246960 bytes
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+..........................................................................
+.....................................................
+downloading of 65246960 bytes finished
+Flashing sparse image at offset 4465664
+Flashing Sparse Image
+write_sparse_image: Unknown chunk type: 6c00
+
+
+
+
+$ bash flash.sh 
+Sending 'mmc0' (33 KB)                             OKAY [  0.007s]
+Writing 'mmc0'                                     OKAY [  0.422s]
+Finished. Total time: 0.439s
+Sending 'mmc0boot0' (87 KB)                        OKAY [  0.017s]
+Writing 'mmc0boot0'                                OKAY [  0.074s]
+Finished. Total time: 0.100s
+Sending 'mmc0boot1' (4 KB)                         OKAY [  0.006s]
+Writing 'mmc0boot1'                                OKAY [  0.073s]
+Finished. Total time: 0.088s
+Sending 'bootloaders' (791 KB)                     OKAY [  0.049s]
+Writing 'bootloaders'                              OKAY [  0.031s]
+Finished. Total time: 0.087s
+Invalid sparse file format at header magic
+Sending sparse 'boot' 1/1 (26485 KB)               OKAY [  1.172s]
+Writing 'boot'                                     OKAY [  3.782s]
+Finished. Total time: 5.023s
+Sending sparse 'rootfs' 1/28 (63717 KB)            OKAY [  3.922s]
+Writing 'rootfs'                                   OKAY [  5.050s]
+Sending sparse 'rootfs' 2/28 (62849 KB)            OKAY [  3.059s]
+Writing 'rootfs'                                   OKAY [  2.191s]
+Sending sparse 'rootfs' 3/28 (63360 KB)            OKAY [  3.394s]
+Writing 'rootfs'                                   OKAY [  1.809s]
+Sending sparse 'rootfs' 4/28 (58192 KB)            OKAY [  3.354s]
+Writing 'rootfs'                                   OKAY [  1.669s]
+Sending sparse 'rootfs' 5/28 (65532 KB)            OKAY [  2.904s]
+Writing 'rootfs'                                   OKAY [  2.249s]
+Sending sparse 'rootfs' 6/28 (61957 KB)            
+
+
+[747726.492485] usb 3-4: USB disconnect, device number 89
+[747743.739267] usb 3-4: new high-speed USB device number 90 using xhci_hcd
+[747743.887626] usb 3-4: New USB device found, idVendor=0e8d, idProduct=201c, bcdDevice= 2.15
+[747743.887630] usb 3-4: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[747743.887633] usb 3-4: Product: USB download gadget
+[747743.887635] usb 3-4: Manufacturer: U-Boot
+[747743.887637] usb 3-4: SerialNumber: 479070024791121002180001733063824812
+
+
+
+
+You are in emergency mode. After logging in, type "journalctl -xb" to view
+system logs, "systemctl reboot" to r
+Cannot open access to console, the root account is locked.
+See sulogin(8) man page for more details.
+
+Press Enter to continue.
+
+
