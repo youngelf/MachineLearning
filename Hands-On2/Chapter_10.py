@@ -465,8 +465,14 @@ def run_all_10():
     print ("Best score: ", rnd_cv.best_score_)
     print ("Best params: ", rnd_cv.best_params_)
 
+    # That worked! This is so awesome
+    #
+    # Total run time:  2 days, 19:06:43.835932
+    # Best score:  -0.29127251108487445
+    # Best params:  {'learning_rate': 0.004082737101809356, 'n_hidden': 6, 'n_neurons': 145}
+    
 
-print ("Fully done! Thanks")
+print ("Fully done and tested! This was tested working on Mon 23 Nov 2020 08:59:34 PM PST")
 
 # -------------- All converted --------------------
 

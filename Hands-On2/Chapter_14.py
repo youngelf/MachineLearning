@@ -144,6 +144,9 @@ def prepare_digits_mnist_data(X_train, X_valid, X_test, debug=False):
 
 
 # Test out creating a model. This will need some iterations.
+
+# After 10 epochs, this produced a model of 98.04% validation accuracy
+# 1719/1719 [==============================] - 7803s 5s/step - loss: 0.1307 - accuracy: 0.9648 - val_loss: 0.0761 - val_accuracy: 0.9804
 def create_e9_model(optimizer="sgd", testing=False):
     deep_model = keras.models.Sequential([
         keras.layers.Conv2D(32, 2, activation="relu", padding="same",
@@ -190,6 +193,46 @@ def create_e9_model(optimizer="sgd", testing=False):
             keras.layers.Dense(64, activation="relu", name="bottleneck"),
             keras.layers.Dense(10, activation="softmax", name="output"),
         ])
+
+    deep_model.compile(loss="sparse_categorical_crossentropy",
+                      optimizer=optimizer,
+                      metrics=["accuracy"])
+
+    return deep_model
+
+# Trying out more convolutions earlier, but fewer layers
+def create_shallower_model(optimizer="sgd", testing=False):
+    deep_model = keras.models.Sequential([
+        keras.layers.Conv2D(32, 4, activation="relu", padding="same",
+                            input_shape=(28, 28, 1), name="input"),
+        keras.layers.MaxPooling2D(1,name="firstPool"),
+        keras.layers.Conv2D(128, 2, activation="relu", padding="same",
+                            name="first_conv_1"),
+        keras.layers.MaxPooling2D(1, name="secondPool"),
+
+        # This is too much, as there is no information left anymore if
+        # we have strides of 4 (28 => 7 pixels), then 2 (7 => 4
+        # pixels) and then 2 (4 => 2 pixels).
+
+        # But here's the mystery! If you leave these in, then the
+        # model training works but validation does not. Why not?
+        
+        # keras.layers.Conv2D(256, 2, activation="relu", padding="same",
+        #                     name="second_conv_1"),
+        # keras.layers.Conv2D(256, 2, activation="relu", padding="same",
+        #                     name="second_conv_2"),
+
+        # keras.layers.MaxPooling2D(1, name="thirdPool"),
+
+        keras.layers.Flatten(name="flatten"),
+        keras.layers.Dense(128, activation="relu", name="pre-bottneck"),
+
+        keras.layers.Dropout(0.5, name="bottleneckDropout"),
+        keras.layers.Dense(64, activation="relu", name="bottleneck"),
+
+        keras.layers.Dropout(0.5, name="outputDropout"),
+        keras.layers.Dense(10, activation="softmax", name="output"),
+    ])
 
     deep_model.compile(loss="sparse_categorical_crossentropy",
                       optimizer=optimizer,
@@ -248,3 +291,6 @@ def run_c14_e9():
     history = fit_e9_model(model, X_train, y_train, X_valid, y_valid, epochs=10)
     plot_e9_history(history, "naive_deep_mnist")
 
+
+# Exercise 10, doing transfer learning.
+# First, get some data with at least 100 labeled images per class
