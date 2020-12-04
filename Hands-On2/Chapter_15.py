@@ -94,6 +94,12 @@ def linear_model(input_shape=[50, 1], output_length=1, optimizer="sgd", testing=
 # Epoch 10/10
 # 219/219 [==============================] - 4s 17ms/step - loss: 0.0037 - mse: 0.0037 - val_loss: 0.0037 - val_mse: 0.0037
 
+# More training didn't help. Error reduced to .0031. This is within
+# range of the RNN models described later in the book.
+#
+# Epoch 500/500
+# 219/219 [==============================] - 4s 17ms/step - loss: 0.0029 - mse: 0.0029 - val_loss: 0.0031 - val_mse: 0.0031
+
 def involved_linear_model(input_shape=[50, 1], output_length=1, optimizer="sgd", testing=False):
     """Generate a naive Linear Estimate model
 

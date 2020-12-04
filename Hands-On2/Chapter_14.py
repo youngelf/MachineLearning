@@ -251,6 +251,14 @@ def create_shallower_model(optimizer="sgd", testing=False):
 
 # Final try, let's increase the number of convolution maps in
 # first_conv_1 to 256,
+#
+# 1719/1719 [==============================] - 5527s 3s/step - loss: 0.1177 - accuracy: 0.9683 - val_loss:#  0.0675 - val_accuracy: 0.9834
+
+#
+# After 10 epochs, the validation accuracy is 98.34%. This is crazy
+# good., but no better than the previous one
+
+
 def create_265filters_model(optimizer="sgd", testing=False):
     deep_model = keras.models.Sequential([
         keras.layers.Conv2D(32, 4, activation="relu", padding="same",
