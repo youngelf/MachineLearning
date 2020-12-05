@@ -201,6 +201,15 @@ def create_e9_model(optimizer="sgd", testing=False):
     return deep_model
 
 # Trying out more convolutions earlier, but fewer layers
+# This gives better convergence!
+# Epoch 9/10
+# 1719/1719 [==============================] - 2661s 2s/step - loss: 0.1306 - accuracy: 0.9659 - val_loss: 0.0673 - val_accuracy: 0.9814
+# Epoch 10/10
+# 1719/1719 [==============================] - 2658s 2s/step - loss: 0.1202 - accuracy: 0.9679 - val_loss: 0.0641 - val_accuracy: 0.9834
+
+# Validation accuracy of 98.34% in the same computation units as
+# earlier, though the time spent was less (stride was 4 at the first
+# layer, and one less convolutional layer, thus simpler)!
 def create_shallower_model(optimizer="sgd", testing=False):
     deep_model = keras.models.Sequential([
         keras.layers.Conv2D(32, 4, activation="relu", padding="same",
@@ -240,10 +249,57 @@ def create_shallower_model(optimizer="sgd", testing=False):
 
     return deep_model
 
+# Final try, let's increase the number of convolution maps in
+# first_conv_1 to 256,
+def create_265filters_model(optimizer="sgd", testing=False):
+    deep_model = keras.models.Sequential([
+        keras.layers.Conv2D(32, 4, activation="relu", padding="same",
+                            input_shape=(28, 28, 1), name="input"),
+        keras.layers.MaxPooling2D(1,name="firstPool"),
+        keras.layers.Conv2D(256, 2, activation="relu", padding="same",
+                            name="first_conv_1"),
+        keras.layers.MaxPooling2D(1, name="secondPool"),
+
+        # This is too much, as there is no information left anymore if
+        # we have strides of 4 (28 => 7 pixels), then 2 (7 => 4
+        # pixels) and then 2 (4 => 2 pixels).
+
+        # But here's the mystery! If you leave these in, then the
+        # model training works but validation does not. Why not?
+        
+        # keras.layers.Conv2D(256, 2, activation="relu", padding="same",
+        #                     name="second_conv_1"),
+        # keras.layers.Conv2D(256, 2, activation="relu", padding="same",
+        #                     name="second_conv_2"),
+
+        # keras.layers.MaxPooling2D(1, name="thirdPool"),
+
+        keras.layers.Flatten(name="flatten"),
+        keras.layers.Dense(128, activation="relu", name="pre-bottneck"),
+
+        keras.layers.Dropout(0.5, name="bottleneckDropout"),
+        keras.layers.Dense(64, activation="relu", name="bottleneck"),
+
+        keras.layers.Dropout(0.5, name="outputDropout"),
+        keras.layers.Dense(10, activation="softmax", name="output"),
+    ])
+
+    deep_model.compile(loss="sparse_categorical_crossentropy",
+                      optimizer=optimizer,
+                      metrics=["accuracy"])
+
+    return deep_model
+
 def fit_e9_model(model, X_train, y_train, 
                  X_valid, y_valid, epochs,
                  batch_size=32, verbose=0,
                  test_shapes=True):
+    """Fit a model
+
+    Call with:
+    history = fit_e9_model(model, X_train, y_train, X_valid,
+                           y_valid, epochs=10, verbose=1, test_shapes=True)
+    """
 
     # This fails after a day, when the validation data is incorrectly shaped.
     # This is a terrible idea. Failures should be early.
