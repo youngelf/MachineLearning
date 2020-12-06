@@ -21,7 +21,7 @@ def generate_time_series(batch_size, n_steps):
 
     series = 0.5 * np.sin((time - offset1) * (freq1 * 10 + 10)) # wave 1
     series += 0.2 * np.sin((time - offset2) * (freq2 * 20 + 20)) # wave 2
-    series += 0.1 * (np.random.rand(batch_size, n_steps) - 0.5) # noise        
+    series += 0.1 * (np.random.rand(batch_size, n_steps) - 0.5) # noise
 
     return series[..., np.newaxis].astype(np.float32)
 
@@ -41,7 +41,7 @@ def time_series_data():
     series = generate_time_series(10000, n_steps + 1)
     X_train, y_train = series[:7000,:n_steps], series[:7000, -1]
     X_valid, y_valid = series[7000:9000,:n_steps], series[7000:9000, -1]
-    X_test, y_test = series[9000:,:n_steps], series[9000:, -1]    
+    X_test, y_test = series[9000:,:n_steps], series[9000:, -1]
 
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
@@ -73,7 +73,7 @@ def linear_model(input_shape=[50, 1], output_length=1, optimizer="sgd", testing=
     This feeds all input data to a single Dense Linear Model.
     Call with:
     model = linear_model()
-    
+
     model = linear_model(input_shape=[100, 1])
     """
     model = keras.models.Sequential([
@@ -106,7 +106,7 @@ def involved_linear_model(input_shape=[50, 1], output_length=1, optimizer="sgd",
     This feeds all input data to a single Dense Linear Model.
     Call with:
     model = involved_linear_model()
-    
+
     model = involved_linear_model(input_shape=[100, 1])
     """
     model = keras.models.Sequential([
@@ -125,8 +125,104 @@ def involved_linear_model(input_shape=[50, 1], output_length=1, optimizer="sgd",
 
     return model
 
+# Epoch 10/10
+# 219/219 [==============================] - 9s 42ms/step - loss: 0.0047 - mse: 0.0047 - val_loss: 0.0043 - val_mse: 0.0043
+#
+# 10 epochs produced 0.0043 error. Not good enough. Let's try more epochs.
 
-def fit_model(model, X_train, y_train, 
+# Epoch 57/100
+# 219/219 [==============================] - 9s 42ms/step - loss: 0.0029 - mse: 0.0029 - val_loss: 0.0029 - val_mse: 0.0029
+#
+# At 67 epochs (10 earlier, 57 now, it is at 0.0029 validation mse which is pretty reasonable.
+# Epoch 100/100
+# 219/219 [==============================] - 9s 42ms/step - loss: 0.0028 - mse: 0.0028 - val_loss: 0.0029 - val_mse: 0.0029
+# After 110, mse is 0.0029. Decent
+def basic_rnn_model(input_shape=[None, 1], output_length=1, optimizer="sgd", testing=False):
+    """Generate a naive RNN model
+
+    This feeds all input data to a single Dense Linear Model.
+    Call with:
+    model = basic_rnn_model()
+
+    model = basic_rnn_model(input_shape=[100, 1])
+
+    This model takes in an input shape of [None, 1] because it is a sequence to vector model.
+    """
+    model = keras.models.Sequential([
+        # Grab the input element, and return all the sequences to the next layer
+        keras.layers.SimpleRNN(20, return_sequences=True, input_shape=input_shape),
+        # Next layer is an RNN, so return all the sequences to the next layer
+        keras.layers.SimpleRNN(20, return_sequences=True),
+        # Return the single element, this is the output so don't return sequences.
+        keras.layers.SimpleRNN(output_length),
+    ])
+
+    # MeanSquaredError loss because this is a regression problem, not categorical.
+    model.compile(loss=tf.keras.losses.MeanSquaredError(),
+                  optimizer=optimizer,
+                  metrics=["mse"])
+
+    return model
+
+# After 50 epochs, validation mse is 0.0031. Great.
+# Epoch 40/40
+# 219/219 [==============================] - 6s 29ms/step - loss: 0.0032 - mse: 0.0032 - val_loss: 0.0031 - val_mse: 0.0031
+# 
+def basic_rnn_withDense(input_shape=[None, 1], output_length=1, optimizer="sgd", testing=False):
+    """Generate a naive RNN model with a dense last layer. This model is
+    similar to the basic_rnn_model() method's output
+
+    This feeds all input data to a single Dense Linear Model.
+    Call with:
+    model = basic_rnn_withDense()
+
+    model = basic_rnn_withDense(input_shape=[100, 1])
+
+    This model takes in an input shape of [None, 1] because it is a sequence to vector model.
+
+    """
+    model = keras.models.Sequential([
+        # Grab the input element, and return all the sequences to the next layer
+        keras.layers.SimpleRNN(20, return_sequences=True, input_shape=input_shape),
+        # Next layer is a dense layer, so don't return sequences
+        keras.layers.SimpleRNN(20),
+        # Return the single element, this is the output so don't return sequences.
+        keras.layers.Dense(output_length),
+    ])
+
+    # MeanSquaredError loss because this is a regression problem, not categorical.
+    model.compile(loss=tf.keras.losses.MeanSquaredError(),
+                  optimizer=optimizer,
+                  metrics=["mse"])
+
+    return model
+
+
+# Generate sequence to sequence training data: n_steps of training, and 10 steps of output
+def time_series_10label_data():
+    """Generate time series data for experimenting with. This produces
+    labeled data that has 10 elements that are to be guessed
+
+    This gives a series of 7k labeled training data with a single label to predict.
+    The validation data has 2k observations, and the test data has 1k observations.
+
+    All are drawn from the sinusoidal time series from generate_time_series
+
+    Call with:
+     X_train, y_train, X_valid, y_valid, X_test, y_test = time_series_10label_data()
+
+    """
+    n_steps = 50
+    series = generate_time_series(10000, n_steps + 10)
+    X_train, y_train = series[:7000,:n_steps], series[:7000, n_steps:, 0]
+    X_valid, y_valid = series[7000:9000,:n_steps], series[7000:9000, n_steps:, 0]
+    X_test, y_test = series[9000:,:n_steps], series[9000:, n_steps:, 0]
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
+
+
+
+def fit_model(model, X_train, y_train,
               X_valid, y_valid, epochs,
               batch_size=32, verbose=0,
               test_shapes=True):
@@ -171,4 +267,3 @@ def fit_model(model, X_train, y_train,
 
 def plot_history(history, name):
     c10.plot_training(history, name, show=False)
-

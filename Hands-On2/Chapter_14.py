@@ -124,7 +124,7 @@ def run_all_14():
     # what works better.
 
 
-
+print ("Chapter  14 done. Just one last exercise (e10 remains). I've done e11")
 # Exercises here:
 
 # Exercise 9: Create a CNN for digits mnist
@@ -257,7 +257,6 @@ def create_shallower_model(optimizer="sgd", testing=False):
 #
 # After 10 epochs, the validation accuracy is 98.34%. This is crazy
 # good., but no better than the previous one
-
 
 def create_265filters_model(optimizer="sgd", testing=False):
     deep_model = keras.models.Sequential([
