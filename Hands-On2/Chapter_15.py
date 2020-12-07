@@ -168,6 +168,11 @@ def basic_rnn_model(input_shape=[None, 1], output_length=1, optimizer="sgd", tes
 # Epoch 40/40
 # 219/219 [==============================] - 6s 29ms/step - loss: 0.0032 - mse: 0.0032 - val_loss: 0.0031 - val_mse: 0.0031
 # 
+
+# And on the sequence of 10 output, 50 epochs gives a low 0.0076 mse
+# Epoch 50/50
+# 219/219 [==============================] - 6s 30ms/step - loss: 0.0082 - mse: 0.0082 - val_loss: 0.0076 - val_mse: 0.0076
+
 def basic_rnn_withDense(input_shape=[None, 1], output_length=1, optimizer="sgd", testing=False):
     """Generate a naive RNN model with a dense last layer. This model is
     similar to the basic_rnn_model() method's output
@@ -197,8 +202,103 @@ def basic_rnn_withDense(input_shape=[None, 1], output_length=1, optimizer="sgd",
 
     return model
 
+def basic_lstm_distributed(input_shape=[None, 1], output_length=10, 
+                           optimizer="sgd", testing=False, only_last_mse=True):
+    """Generate a naive RNN model with a dense last layer. This model is
+    similar to the basic_rnn_model() method's output
 
-# Generate sequence to sequence training data: n_steps of training, and 10 steps of output
+    This feeds all input data to a single Dense Linear Model.
+    Call with:
+    model = basic_lstm_distributed()
+
+    model = basic_lstm_distributed(input_shape=[100, 1])
+
+    This model takes in an input shape of [None, 1] because it is a sequence to vector model.
+
+    """
+
+
+    # When feeding the sequence to sequence models, then we don't care
+    # about the loss of the full training run, just the final output.
+    # So we can use this loss function where only the last MSE is
+    # retained, all else are discarded.
+    def last_time_step_mse(Y_true, Y_pred):
+        """ Mean squared error of the last step only """
+        return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
+
+    model = keras.models.Sequential([
+        # Grab the input element, and return all the sequences to the next layer
+        keras.layers.LSTM(50, return_sequences=True, input_shape=input_shape),
+        # Next layer is a dense layer, so don't return sequences
+        keras.layers.LSTM(50, return_sequences=True),
+        # Return the single element, this is the output so don't return sequences.
+        keras.layers.TimeDistributed(keras.layers.Dense(output_length)),
+    ])
+
+    # MeanSquaredError loss because this is a regression problem, not categorical.
+    if(only_last_mse):
+        metrics = last_time_step_mse
+    else:
+        metrics = "mse"
+        
+    model.compile(loss=tf.keras.losses.MeanSquaredError(),
+                  optimizer=optimizer,
+                  metrics=[metrics])
+
+    return model
+
+# This is the best model. A 1D convolution, and two layers of GRU units.
+# To fit, you have to run this:
+# 
+def basic_gru_distributed(input_shape=[None, 1], output_length=10, 
+                          optimizer="adam", only_last_mse=True):
+    """Generate a naive RNN model with a dense last layer. This model is
+    similar to the basic_rnn_model() method's output
+
+    This feeds all input data to a single Dense Linear Model.
+    Call with:
+    model = basic_gru_distributed()
+
+    model = basic_gru_distributed(input_shape=[100, 1])
+
+    This model takes in an input shape of [None, 1] because it is a sequence to vector model.
+
+    """
+
+
+    # When feeding the sequence to sequence models, then we don't care
+    # about the loss of the full training run, just the final output.
+    # So we can use this loss function where only the last MSE is
+    # retained, all else are discarded.
+    def last_time_step_mse(Y_true, Y_pred):
+        """ Mean squared error of the last step only """
+        return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
+
+    model = keras.models.Sequential([
+        # Grab the input element, and return all the sequences to the next layer
+        keras.layers.Conv1D(filters=20, kernel_size=4, strides=2,
+                            padding="valid", input_shape=input_shape),
+        keras.layers.GRU(20, return_sequences=True, input_shape=input_shape),
+        # Next layer is a dense layer, so don't return sequences
+        keras.layers.GRU(20, return_sequences=True),
+        # Return the single element, this is the output so don't return sequences.
+        keras.layers.TimeDistributed(keras.layers.Dense(output_length)),
+    ])
+
+    # MeanSquaredError loss because this is a regression problem, not categorical.
+    if(only_last_mse):
+        metrics = last_time_step_mse
+    else:
+        metrics = "mse"
+        
+    model.compile(loss="mse",
+                  optimizer=optimizer,
+                  metrics=[metrics])
+
+    return model
+
+
+# Generate sequence to vector training data: n_steps of training, and 10 steps of output
 def time_series_10label_data():
     """Generate time series data for experimenting with. This produces
     labeled data that has 10 elements that are to be guessed
@@ -220,6 +320,41 @@ def time_series_10label_data():
 
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
+
+# Generate sequence to sequence training data: n_steps of training,
+# and 10 steps of output at *every* input batch. This is different
+# from the previous run in that time_series_10label_data outputs 10
+# values at the end of all of the input. This method outputs 10
+# valueas at every batch.
+def sequence_to_sequence_data():
+    """Generate time series data for experimenting with. This produces
+    labeled data that has 10 elements that are to be guessed
+
+    This gives a series of 7k labeled training data with a single label to predict.
+    The validation data has 2k observations, and the test data has 1k observations.
+
+    All are drawn from the sinusoidal time series from generate_time_series
+
+    Call with:
+     X_train, y_train, X_valid, y_valid, X_test, y_test = sequence_to_sequence_data()
+
+    """
+    n_steps = 50
+    series = generate_time_series(10000, n_steps + 10)
+    Y = np.empty((10000,n_steps, 10)) # Each target is a sequence of 10D vectors
+
+    for step_ahead in range(1, 10+1):
+        Y[:, :, step_ahead - 1] = series[:, step_ahead:step_ahead + n_steps, 0]
+
+    X_train = series[:7000,:n_steps]
+    X_valid = series[7000:9000,:n_steps]
+    X_test = series[9000:,:n_steps]
+
+    y_train = Y[:7000]
+    y_valid = Y[7000:9000]
+    y_test = Y[9000:]    
+
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
 
 
 def fit_model(model, X_train, y_train,
