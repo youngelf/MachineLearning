@@ -167,7 +167,7 @@ def basic_rnn_model(input_shape=[None, 1], output_length=1, optimizer="sgd", tes
 # After 50 epochs, validation mse is 0.0031. Great.
 # Epoch 40/40
 # 219/219 [==============================] - 6s 29ms/step - loss: 0.0032 - mse: 0.0032 - val_loss: 0.0031 - val_mse: 0.0031
-# 
+#
 
 # And on the sequence of 10 output, 50 epochs gives a low 0.0076 mse
 # Epoch 50/50
@@ -202,8 +202,8 @@ def basic_rnn_withDense(input_shape=[None, 1], output_length=1, optimizer="sgd",
 
     return model
 
-def basic_lstm_distributed(input_shape=[None, 1], output_length=10, 
-                           optimizer="sgd", testing=False, only_last_mse=True):
+def basic_lstm_distributed(input_shape=[None, 1], output_length=10,
+                           optimizer="adam", testing=False, only_last_mse=True):
     """Generate a naive RNN model with a dense last layer. This model is
     similar to the basic_rnn_model() method's output
 
@@ -240,7 +240,7 @@ def basic_lstm_distributed(input_shape=[None, 1], output_length=10,
         metrics = last_time_step_mse
     else:
         metrics = "mse"
-        
+
     model.compile(loss=tf.keras.losses.MeanSquaredError(),
                   optimizer=optimizer,
                   metrics=[metrics])
@@ -249,8 +249,14 @@ def basic_lstm_distributed(input_shape=[None, 1], output_length=10,
 
 # This is the best model. A 1D convolution, and two layers of GRU units.
 # To fit, you have to run this:
-# 
-def basic_gru_distributed(input_shape=[None, 1], output_length=10, 
+#
+# Epoch 50/50
+# 219/219 [==============================] - 9s 43ms/step - loss: 0.0121 - last_time_step_mse: 0.0032 - val_loss: 0.0124 - val_last_time_step_mse: 0.0033
+# MSE is 0.0033, very impressive.
+
+# To fit, run this:
+# history = fit_model(model, X_train, y_train[:, 3::2], X_valid, y_valid[:,3::2], epochs=50, verbose =1, test_shapes=True)
+def basic_gru_distributed(input_shape=[None, 1], output_length=10,
                           optimizer="adam", only_last_mse=True):
     """Generate a naive RNN model with a dense last layer. This model is
     similar to the basic_rnn_model() method's output
@@ -258,6 +264,8 @@ def basic_gru_distributed(input_shape=[None, 1], output_length=10,
     This feeds all input data to a single Dense Linear Model.
     Call with:
     model = basic_gru_distributed()
+    history = fit_model(model, X_train, y_train[:, 3::2], X_valid, y_valid[:,3::2], epochs=50, verbose =1, test_shapes=True)
+
 
     model = basic_gru_distributed(input_shape=[100, 1])
 
@@ -290,7 +298,7 @@ def basic_gru_distributed(input_shape=[None, 1], output_length=10,
         metrics = last_time_step_mse
     else:
         metrics = "mse"
-        
+
     model.compile(loss="mse",
                   optimizer=optimizer,
                   metrics=[metrics])
@@ -352,7 +360,7 @@ def sequence_to_sequence_data():
 
     y_train = Y[:7000]
     y_valid = Y[7000:9000]
-    y_test = Y[9000:]    
+    y_test = Y[9000:]
 
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
@@ -402,3 +410,80 @@ def fit_model(model, X_train, y_train,
 
 def plot_history(history, name):
     c10.plot_training(history, name, show=False)
+
+
+def run_all_15():
+    """ Run all Chapter 15 code """
+
+    # Simple time series data. 1 label after n_step(50 by default)
+    X_train, y_train, X_valid, y_valid, X_test, y_test = time_series_data()
+
+    # Generate an RNN model
+    model = basic_rnn_model()
+    history = fit_model(model, X_train, y_train, X_valid,y_valid, epochs=100, verbose=1, test_shapes=True)
+
+    # This has a dense layer at the end rather than a single RNN output.
+    model = basic_rnn_withDense()
+    history = fit_model(model, X_train, y_train, X_valid,y_valid, epochs=50, verbose=1, test_shapes=True)
+
+
+    # Now get data with 10 elements as the output, and fit that
+    X_train, y_train, X_valid, y_valid, X_test, y_test = time_series_10label_data()
+    model = basic_rnn_withDense(output_length=10, optimizer="adam")
+    history = fit_model(model, X_train, y_train, X_valid,y_valid, epochs=50, verbose=1, test_shapes=True)
+
+
+    # This data is 10 elements at every time step. The LSTM and GRU
+    # model generation code above expects this
+    X_train, y_train, X_valid, y_valid, X_test, y_test = sequence_to_sequence_data()
+
+    model = basic_lstm_distributed()
+    history = fit_model(model, X_train, y_train, X_valid,y_valid, epochs=50, verbose=1, test_shapes=True)
+
+    # Best model.
+    model = basic_gru_distributed()
+    history = fit_model(model, X_train, y_train[:, 3::2], X_valid, y_valid[:,3::2], epochs=50, verbose=1, test_shapes=True)
+
+print ("All done. Exercises are next")
+
+
+# Exercises.
+
+# E1.
+# sequence to sequence: translating English to Greek.
+# sequence to vector: Predicting movement of stock price
+# Vector to sequence: Generate music for a genre
+
+
+# E2.
+# Dimensions of input RNN layer: [observations, time steps, input
+# features]. Output is [observations, output features]
+
+
+# E3.
+# sequence to sequence
+# All should set return_sequences=True.
+
+# sequence to vector
+# All but the last RNN layer should set return_sequences=True. If the
+# last layer is a Dense layer, then its prior layer should not
+# return_sequences=True.
+
+
+# E4. If the series is stationary, I'd use a sequence to vector RNN
+# with LSTMs or GRU cells. The last layer would be a Dense layer with
+# 7 outputs.
+
+# E5. Vanishing gradients are the biggest difficulty. Either choosing
+# to normalize over features or choosing to normalize over time is one
+# technique. Choosing simpler models rather than complicated models,
+# or using Convolutional layers is another mechanism to increase
+# information flow without increasing complexity.
+
+# E6. on paper
+
+# E7. To capture longer-term information, multigrid-style in a single
+# convolution that can have a variety of filters for the longer-term
+# pattern.
+
+# E8. This sounds complicated.
