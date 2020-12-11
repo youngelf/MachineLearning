@@ -83,12 +83,42 @@ def make_character_model(max_id):
     model.compile(loss="sparse_categorical_crossentropy", optimizer='adam')
 
     return model
-    
+
+
+def preprocess(in_text):
+    """ Convert input text into a one-hot array for use in the shakespeare model"""
+    X = np.array(tokenizer.texts_to_sequences(in_text)) - 1
+    return tf.one_hot(X, max_id)
+
+
+def next_char(text, tokenizer, temperature=0.1):
+    """Generate a string of text, given just a character to start with"""
+    X_new = preprocess([text])
+    y_proba = model.predict(X_new)[0, -1:, :]
+    rescaled_logits = tf.math.log(y_prob) / temperature
+    char_id = tf.random.categorical(rescaled_logits, num_samples=1) + 1
+    return tokenizer.sequences_to_texts(char_id.numpy())[0]
+
+def complete_text(text, tokenizer, n_chars=50, temperature=0.1):
+    for _ in range(n_chars):
+        text += next_char(text, temperature)
+    return text
+
 def run_all_16():
     tokenizer, encoded, max_id, dataset = get_shakespeare()
     model = make_character_model(max_id)
 
     history = model.fit(dataset, epochs=20)
 
+    # Can it complete: How are you
+    X_new = preprocess(["How are yo"])
+    y_pred = model.predict_classes(X_new)
+    # Get the vector converted to the characters, take the first element, and the final character
+    sentence = tokenizer.sequences_to_texts(y_pred + 1)[0]
+    print ("Predicted sentence: ", sentence)
+    predicted_character = sentence[-1]
+    print ("Predicted character: ", predicted_character)
+
+    print(complete_text('t', temperature=0.2))
 
 print ("All done, starting out with Python directly now")
