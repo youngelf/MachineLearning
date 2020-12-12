@@ -105,6 +105,11 @@ def complete_text(text, tokenizer, n_chars=50, temperature=0.1):
     return text
 
 def run_all_16():
+    """Call all Chapter 16 code, returning critical models
+    
+    Call with:
+    model, tokenizer = run_all_16()
+"""
     tokenizer, encoded, max_id, dataset = get_shakespeare()
     model = make_character_model(max_id)
 
@@ -120,5 +125,10 @@ def run_all_16():
     print ("Predicted character: ", predicted_character)
 
     print(complete_text('t', temperature=0.2))
+    return model, tokenizer
+
 
 print ("All done, starting out with Python directly now")
+
+### Now the exercises, done here.
+
