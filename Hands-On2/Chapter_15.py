@@ -5,6 +5,8 @@ import tensorflow_datasets as tfds
 import numpy as np
 import Chapter_10 as c10
 
+from pathlib import Path
+
 # Chapter 15: RNNs and CNNs for time series data.
 
 # Creating time series
@@ -487,3 +489,99 @@ print ("All done. Exercises are next")
 # pattern.
 
 # E8. This sounds complicated.
+
+# I would probably use a CNN on individual frames, probably extract
+# critical frames. The difficulty stems from the 2d frames, and the
+# additional dimension of time. I guess this is one additional input
+# to the CNN, where there is CNN to extract the spatial information
+# and an RNN to extract the temporal information. Can the CNN layers
+# be used in a time-distributed way?
+
+# E9. Trying to classify the SketchRNN dataset. I guess the author
+# wants the QuickDraw dataset that corresponds to the SketchRNN
+# model. I really hate such mistakes that passed through in the book.
+# I guess the pull request is still stuck, but it is available as a tfrecord.
+
+# From:
+# https://github.com/ageron/handson-ml2/blob/master/15_processing_sequences_using_rnns_and_cnns.ipynb
+
+
+def load_sketch_dataset():
+    """Loads the sketch dataset.
+
+    Call with:
+    train_set, valid_set, test_set = load_sketch_dataset()
+    """
+    DOWNLOAD_ROOT = "http://download.tensorflow.org/data/"
+    FILENAME = "quickdraw_tutorial_dataset_v1.tar.gz"
+
+    # Information about the dataset is provided here:
+    # https://github.com/googlecreativelab/quickdraw-dataset
+
+    # The magic to read this dataset comes from here:
+    # https://raw.githubusercontent.com/tensorflow/models/r1.13.0/tutorials/rnn/quickdraw/train_model.py
+    # Again, a completely opaque dataset with a magic set of instructions to get the data out.
+    
+    # Download the 1G dataset
+    filepath = keras.utils.get_file(FILENAME,
+                                    DOWNLOAD_ROOT + FILENAME,
+                                    cache_subdir="datasets/quickdraw",
+                                    extract=True)
+
+    # Get names of all the files
+    quickdraw_dir = Path(filepath).parent
+    train_files = sorted([str(path) for path in quickdraw_dir.glob("training.tfrecord-*")])
+    eval_files = sorted([str(path) for path in quickdraw_dir.glob("eval.tfrecord-*")])
+
+    # Get all the training and test category (classes) names
+    with open(quickdraw_dir / "eval.tfrecord.classes") as test_classes_file:
+        test_classes = test_classes_file.readlines()
+
+    with open(quickdraw_dir / "training.tfrecord.classes") as train_classes_file:
+        train_classes = train_classes_file.readlines()
+                    
+    # Make sure they are identical, otherwise we have a problem
+    assert train_classes == test_classes
+    # Normalize the class names, and show them
+    class_names = [name.strip().lower() for name in train_classes]
+    print(sorted(class_names))
+
+    # Return tfrecord data as sketches, lengths and the labels
+    def parse(data_batch):
+        feature_descriptions = {
+            "ink": tf.io.VarLenFeature(dtype=tf.float32),
+            "shape": tf.io.FixedLenFeature([2], dtype=tf.int64),
+            "class_index": tf.io.FixedLenFeature([1], dtype=tf.int64)
+        }
+        examples = tf.io.parse_example(data_batch, feature_descriptions)
+        flat_sketches = tf.sparse.to_dense(examples["ink"])
+        sketches = tf.reshape(flat_sketches, shape=[tf.size(data_batch), -1, 3])
+        # How long the 
+        lengths = examples["shape"][:, 0]
+        # This is what we have to predict
+        labels = examples["class_index"][:, 0]
+        return sketches, lengths, labels
+
+    # Create a tf dataset from the files
+    def quickdraw_dataset(filepaths, batch_size=32, shuffle_buffer_size=None,
+                          n_parse_threads=5, n_read_threads=5, cache=False):
+        dataset = tf.data.TFRecordDataset(filepaths,
+                                          num_parallel_reads=n_read_threads)
+        if cache:
+            dataset = dataset.cache()
+        if shuffle_buffer_size:
+            dataset = dataset.shuffle(shuffle_buffer_size)
+            dataset = dataset.batch(batch_size)
+            # Map the individual data to sketches, lengths and the class labels
+            dataset = dataset.map(parse, num_parallel_calls=n_parse_threads)
+            return dataset.prefetch(1)
+
+    # Keep the full training set, and don't split out the validation here.
+    train_set = quickdraw_dataset(train_files, shuffle_buffer_size=10000)
+
+    # Take the first five eval files for validation
+    valid_set = quickdraw_dataset(eval_files[:5])
+    # And the rest for the actual test set
+    test_set = quickdraw_dataset(eval_files[5:])
+    
+    return train_set, valid_set, test_set
