@@ -6,6 +6,8 @@ import numpy as np
 import Chapter_10 as c10
 
 from pathlib import Path
+from IPython.display import Audio
+
 
 # Chapter 15: RNNs and CNNs for time series data.
 
@@ -585,3 +587,87 @@ def load_sketch_dataset():
     test_set = quickdraw_dataset(eval_files[5:])
     
     return train_set, valid_set, test_set
+
+def draw_sketch(sketch, label=None):
+    origin = np.array([[0., 0., 0.]])
+    sketch = np.r_[origin, sketch]
+    stroke_end_indices = np.argwhere(sketch[:, -1]==1.)[:, 0]
+    coordinates = np.cumsum(sketch[:, :2], axis=0)
+    strokes = np.split(coordinates, stroke_end_indices + 1)
+    title = class_names[label.numpy()] if label is not None else "Try to guess"
+    plt.title(title)
+    plt.plot(coordinates[:, 0], -coordinates[:, 1], "y:")
+    for stroke in strokes:
+        plt.plot(stroke[:, 0], -stroke[:, 1], ".-")
+        plt.axis("off")
+        
+def draw_sketches(sketches, lengths, labels):
+    n_sketches = len(sketches)
+    n_cols = 4
+    n_rows = (n_sketches - 1) // n_cols + 1
+    plt.figure(figsize=(n_cols * 3, n_rows * 3.5))
+    for index, sketch, length, label in zip(range(n_sketches), sketches, lengths, labels):
+        plt.subplot(n_rows, n_cols, index + 1)
+        draw_sketch(sketch[:length], label)
+        plt.show()
+
+def sketch_a_few(train_set):
+    for sketches, lengths, labels in train_set.take(1):
+        draw_sketches(sketches, lengths, labels)
+
+
+def load_chorales():
+    """Load Bach Chorales dataset
+
+    Call with:
+
+    """
+    DOWNLOAD_ROOT = "https://github.com/ageron/handson-ml2/raw/master/datasets/jsb_chorales/"
+    FILENAME = "jsb_chorales.tgz"
+    filepath = keras.utils.get_file(FILENAME,
+                                    DOWNLOAD_ROOT + FILENAME,
+                                    cache_subdir="datasets/jsb_chorales",
+                                    extract=True)
+    
+    jsb_chorales_dir = Path(filepath).parent
+    train_files = sorted(jsb_chorales_dir.glob("train/chorale_*.csv"))
+    valid_files = sorted(jsb_chorales_dir.glob("valid/chorale_*.csv"))
+    test_files = sorted(jsb_chorales_dir.glob("test/chorale_*.csv"))
+
+    
+def notes_to_frequencies(notes):
+    # Frequency doubles when you go up one octave; there are 12 semi-tones
+    # per octave; Note A on octave 4 is 440 Hz, and it is note number 69.
+    return 2 ** ((np.array(notes) - 69) / 12) * 440
+
+def frequencies_to_samples(frequencies, tempo, sample_rate):
+    note_duration = 60 / tempo # the tempo is measured in beats per minutes
+    # To reduce click sound at every beat, we round the frequencies to try to
+    # get the samples close to zero at the end of each note.
+    frequencies = np.round(note_duration * frequencies) / note_duration
+    n_samples = int(note_duration * sample_rate)
+    time = np.linspace(0, note_duration, n_samples)
+    sine_waves = np.sin(2 * np.pi * frequencies.reshape(-1, 1) * time)
+    # Removing all notes with frequencies ≤ 9 Hz (includes note 0 = silence)
+    sine_waves *= (frequencies > 9.).reshape(-1, 1)
+    return sine_waves.reshape(-1)
+
+def chords_to_samples(chords, tempo, sample_rate):
+    freqs = notes_to_frequencies(chords)
+    freqs = np.r_[freqs, freqs[-1:]] # make last note a bit longer
+    merged = np.mean([frequencies_to_samples(melody, tempo, sample_rate)
+                     for melody in freqs.T], axis=0)
+    n_fade_out_samples = sample_rate * 60 // tempo # fade out last note
+    fade_out = np.linspace(1., 0., n_fade_out_samples)**2
+    merged[-n_fade_out_samples:] *= fade_out
+    return merged
+
+def play_chords(chords, tempo=160, amplitude=0.1, sample_rate=44100, filepath=None):
+    samples = amplitude * chords_to_samples(chords, tempo, sample_rate)
+    if filepath:
+        from scipy.io import wavfile
+        samples = (2**15 * samples).astype(np.int16)
+        wavfile.write(filepath, sample_rate, samples)
+        return display(Audio(filepath))
+    else:
+        return display(Audio(samples, rate=sample_rate))
