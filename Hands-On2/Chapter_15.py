@@ -4,6 +4,7 @@ import tensorflow_datasets as tfds
 
 import numpy as np
 import Chapter_10 as c10
+import pandas as pd
 
 from pathlib import Path
 from IPython.display import Audio
@@ -620,7 +621,7 @@ def load_chorales():
     """Load Bach Chorales dataset
 
     Call with:
-
+    train_set, valid_set, test_set = load_chorales()
     """
     DOWNLOAD_ROOT = "https://github.com/ageron/handson-ml2/raw/master/datasets/jsb_chorales/"
     FILENAME = "jsb_chorales.tgz"
@@ -628,12 +629,39 @@ def load_chorales():
                                     DOWNLOAD_ROOT + FILENAME,
                                     cache_subdir="datasets/jsb_chorales",
                                     extract=True)
-    
+
+        
     jsb_chorales_dir = Path(filepath).parent
     train_files = sorted(jsb_chorales_dir.glob("train/chorale_*.csv"))
     valid_files = sorted(jsb_chorales_dir.glob("valid/chorale_*.csv"))
     test_files = sorted(jsb_chorales_dir.glob("test/chorale_*.csv"))
 
+    def load_chorales(filepaths):
+            return [pd.read_csv(filepath).values.tolist() for filepath in filepaths]
+
+    train_chorales = load_chorales(train_files)
+    valid_chorales = load_chorales(valid_files)
+    test_chorales = load_chorales(test_files)
+
+    # Validate the ends of the spectrum of notes in the database.
+    notes = set()
+    for chorales in (train_chorales, valid_chorales, test_chorales):
+        for chorale in chorales:
+            for chord in chorale:
+                notes |= set(chord)
+                
+    n_notes = len(notes)
+    min_note = min(notes - {0})
+    max_note = max(notes)
+
+    assert min_note == 36
+    assert max_note == 81
+                                        
+    train_set = bach_dataset(train_chorales, min_note=min_note, shuffle_buffer_size=1000)
+    valid_set = bach_dataset(valid_chorales, min_note=min_note)
+    test_set = bach_dataset(test_chorales, min_note=min_note)
+    
+    return train_set, valid_set, test_set
     
 def notes_to_frequencies(notes):
     # Frequency doubles when you go up one octave; there are 12 semi-tones
@@ -671,3 +699,33 @@ def play_chords(chords, tempo=160, amplitude=0.1, sample_rate=44100, filepath=No
         return display(Audio(filepath))
     else:
         return display(Audio(samples, rate=sample_rate))
+def create_target(batch):
+    X = batch[:, :-1]
+    Y = batch[:, 1:] # predict next note in each arpegio, at each step
+    return X, Y
+
+def preprocess(window, min_note=36):
+    window = tf.where(window == 0, window, window - min_note + 1) # shift values
+    return tf.reshape(window, [-1]) # convert to arpegio
+
+def bach_dataset(chorales, min_note, batch_size=32, shuffle_buffer_size=None,
+                 window_size=32, window_shift=16, cache=True):
+    def batch_window(window):
+        return window.batch(window_size + 1)
+
+    def to_windows(chorale):
+        dataset = tf.data.Dataset.from_tensor_slices(chorale)
+        dataset = dataset.window(window_size + 1, window_shift, drop_remainder=True)
+        return dataset.flat_map(batch_window)
+
+    chorales = tf.ragged.constant(chorales, ragged_rank=1)
+    dataset = tf.data.Dataset.from_tensor_slices(chorales)
+    dataset = dataset.flat_map(to_windows).map(preprocess)
+    if cache:
+        dataset = dataset.cache()
+    if shuffle_buffer_size:
+        dataset = dataset.shuffle(shuffle_buffer_size)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.map(create_target)
+    return dataset.prefetch(1)
+
