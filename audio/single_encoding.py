@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-
 import os
 
 # Traverse the path given in the argument recursively and retain only
 # a single encoding: mp3, ogg, and flac, in that order.
+# Copyright: Vikram Aggarwal (c) 2021
 
 # The filesystem is expected to contain multiple encodings in the
 # *same* directory. So x.mp3, x.ogg, and x.flac are expected to be the
@@ -19,11 +19,6 @@ import os
 # that were ripped for highest quality archiving.
 
 
-# Traverse all the music files and print out their names.
-# Put the directory name here.
-# TODO(viki): Make this specifiable from the commandline
-rootDir = '/x/m/music'
-
 # TODO(viki): Add more error checking around this code. It should
 # verify that we have write permissions, at least
 def main(args):
@@ -32,29 +27,35 @@ def main(args):
 
 
 def traverse(rootDir, dryrun, verbose):
+    """tranverses the directory starting at rootDir.
+
+    Call like this:
+    traverse("/home/user/music-dir", false, true)
+
+    rootDir: String path-name, can be relative but absolute is
+             probably safer.
+
+    dryrun: if set to true, then no filesystem state is modified
+
+    verbose: more debugging information is provided to help understand
+             the functioning.
+
+    """
     # Traverses the directory, depth-first
     for dirName, subdirList, fileList in os.walk(rootDir, topdown=False):
-        dir_clean = dirName.encode('utf-8', 'replace').decode()
-
         # dirName is the base directory name at which all of fileList
         # are present
         if (verbose):
             print ("\n Directory: %s" % dirName)
 
-        #    print ('Directory: %s' % dir_clean) #
-        music_type = None
-        ogg_exists = False
-        mp3_exists = False    
-        flac_exists = False    
-
         # Let's say the directory contains x.flac, x.ogg, y.mp3, and
         # y.ogg at the same level. Other subdirectories are irrlevant.
 
-        fileList.sort()
 
         # fileList continas all the files at this subdirectory level
         # only.  We need them all so we can compare against them.
         # At this point, fileList = ['x.flac', 'x.ogg', 'y.mp3', 'y.ogg']
+        fileList.sort()
         if (verbose):
             print ("Evaluating list: %s" % str(fileList))
 
@@ -81,7 +82,6 @@ def traverse(rootDir, dryrun, verbose):
 
         # Now go over the extensions, deleting .flac and then .ogg
         # till the list contains a single extension.
-
         for song in extensions.keys():
             encodings = extensions[song]
             if (len(encodings) > 1):
@@ -92,19 +92,22 @@ def traverse(rootDir, dryrun, verbose):
 
                 # Now go from the back, and delete all non-zero extensions
                 encodings_to_delete = encodings[1:]
-                
-                if (dryrun):
-                    for delete_ext in encodings_to_delete:
-                        file_delete = ''.join([song, delete_ext])
-                        print ("Deleting: %s", file_delete)
-                        print ("os.remove(%s)", '/'.join([dirName, file_delete]))
-                    
-                        
+                for delete_ext in encodings_to_delete:
+                    file_delete = ''.join([song, delete_ext])
+                    full_path = '/'.join([dirName, file_delete])
+
+                    # Only dry-run, do not delete files
+                    if (dryrun):
+                        print ("Would delete: %s" % full_path)
+                    else:
+                        # While deleting, if verbosity is required, print what we are deleting
+                        if (verbose):
+                            print ("deleting: %s" % full_path)
+                        os.remove(full_path)
 
 
-
-
-                
+# Sort method, which ensures that .mp3 is at first position, then
+# .ogg, then .flac and then anything else.
 def sort_ordinal_order(encoding):
     # mp3 is to be retained first
     if (str.lower(encoding) == '.mp3'):
@@ -120,8 +123,7 @@ def sort_ordinal_order(encoding):
     return 1000
 
 
-
-# if .ogg exists, use those, else try to fall back to .mp3, and then to .flac.
+# In the commandline entrypoint, purely parse the arguments
 if __name__=='__main__':
     my_parser = argparse.ArgumentParser(description='Retain a single encoding for files')
 
