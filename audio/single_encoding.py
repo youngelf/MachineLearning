@@ -23,7 +23,8 @@ import os
 # verify that we have write permissions, at least
 def main(args):
     traverse(args.path, args.dryrun, args.verbose)
-    print ("Main done with path %s" % args.path)
+    if (args.verbose):
+        print ("Done with path %s" % args.path)
 
 
 def traverse(rootDir, dryrun, verbose):
@@ -41,44 +42,39 @@ def traverse(rootDir, dryrun, verbose):
              the functioning.
 
     """
+    deletion_count = 0
     # Traverses the directory, depth-first
     for dirName, subdirList, fileList in os.walk(rootDir, topdown=False):
         # dirName is the base directory name at which all of fileList
         # are present
         if (verbose):
-            print ("\n Directory: %s" % dirName)
+            dir_clean = dirName.encode('utf-8', 'replace').decode()
+            print ("\nExamining: %s" % dir_clean)
 
         # Let's say the directory contains x.flac, x.ogg, y.mp3, and
         # y.ogg at the same level. Other subdirectories are irrlevant.
 
-
-        # fileList continas all the files at this subdirectory level
+        # fileList contains all the files at this subdirectory level
         # only.  We need them all so we can compare against them.
         # At this point, fileList = ['x.flac', 'x.ogg', 'y.mp3', 'y.ogg']
         fileList.sort()
-        if (verbose):
-            print ("Evaluating list: %s" % str(fileList))
-
-        # Names without extensions, made unique in a set. In the example above,
-        # set_names = {'x', 'y'}
-        set_names = { x[:x.rfind('.')] for x in fileList}
-        if (verbose):
-            print ("Unique names: %s" % set_names)
 
         # Mapping of name and extension as tuples. This contains
         # [(x,'.flac'), (x, '.ogg'), ('y', '.mp3'), ('y', '.ogg')] in
         # the example above.
         name_ext = [ (x[:x.rfind('.')], x[x.rfind('.'):]) for x in fileList ]
 
-
         # Dict of names to extensions. So 'x': ['.flac', '.ogg'] says
         # that x.flac and x.ogg are present, and 'x' is an exact match.
 
         # In the example above,
         # extensions = {'x': ['.flac', '.ogg'], 'y': ['.ogg', '.mp3']}
-        extensions = {name: [] for name in set_names}
+        extensions = {}
         for (song, encoding) in name_ext:
-            extensions[song].append(encoding)
+            if (extensions.get(song)):
+                extensions[song].append(encoding)
+            else:
+                extensions[song] = [encoding]
 
         # Now go over the extensions, deleting .flac and then .ogg
         # till the list contains a single extension.
@@ -96,14 +92,23 @@ def traverse(rootDir, dryrun, verbose):
                     file_delete = ''.join([song, delete_ext])
                     full_path = '/'.join([dirName, file_delete])
 
+                    # For printing only, get a clean name
+                    fp_clean = full_path.encode('utf-8', 'replace').decode()
+
+                    deletion_count = deletion_count + 1
                     # Only dry-run, do not delete files
                     if (dryrun):
-                        print ("Would delete: %s" % full_path)
+                        print ("  Would delete: %s" % fp_clean)
                     else:
                         # While deleting, if verbosity is required, print what we are deleting
                         if (verbose):
-                            print ("deleting: %s" % full_path)
+                            print (" deleting: %s" % fp_clean)
                         os.remove(full_path)
+
+    if (dryrun):
+        print ("%d files would be deleted" % deletion_count)
+    elif (verbose):
+        print ("%d files deleted" % deletion_count)
 
 
 # Sort method, which ensures that .mp3 is at first position, then
