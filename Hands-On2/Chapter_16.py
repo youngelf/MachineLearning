@@ -85,23 +85,23 @@ def make_character_model(max_id):
     return model
 
 
-def preprocess(in_text):
+def preprocess(in_text, tokenizer, max_id=39):
     """ Convert input text into a one-hot array for use in the shakespeare model"""
     X = np.array(tokenizer.texts_to_sequences(in_text)) - 1
     return tf.one_hot(X, max_id)
 
 
-def next_char(text, tokenizer, temperature=0.1):
+def next_char(text, model, tokenizer, max_id, temperature=0.1):
     """Generate a string of text, given just a character to start with"""
-    X_new = preprocess([text])
+    X_new = preprocess([text], tokenizer, max_id)
     y_proba = model.predict(X_new)[0, -1:, :]
-    rescaled_logits = tf.math.log(y_prob) / temperature
+    rescaled_logits = tf.math.log(y_proba) / temperature
     char_id = tf.random.categorical(rescaled_logits, num_samples=1) + 1
     return tokenizer.sequences_to_texts(char_id.numpy())[0]
 
-def complete_text(text, tokenizer, n_chars=50, temperature=0.1):
+def complete_text(text, model, tokenizer, n_chars=50, max_id=39, temperature=0.1):
     for _ in range(n_chars):
-        text += next_char(text, temperature)
+        text += next_char(text, model, tokenizer, max_id, temperature)
     return text
 
 def run_all_16():
@@ -116,7 +116,7 @@ def run_all_16():
     history = model.fit(dataset, epochs=20)
 
     # Can it complete: How are you
-    X_new = preprocess(["How are yo"])
+    X_new = preprocess(["How are yo"], tokenizer)
     y_pred = model.predict_classes(X_new)
     # Get the vector converted to the characters, take the first element, and the final character
     sentence = tokenizer.sequences_to_texts(y_pred + 1)[0]
@@ -124,7 +124,7 @@ def run_all_16():
     predicted_character = sentence[-1]
     print ("Predicted character: ", predicted_character)
 
-    print(complete_text('t', temperature=0.2))
+    print(complete_text('t', model, tokenizer, max_id=39, temperature=0.2))
     return model, tokenizer
 
 
