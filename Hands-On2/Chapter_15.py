@@ -4,6 +4,11 @@ import tensorflow_datasets as tfds
 
 import numpy as np
 import Chapter_10 as c10
+import pandas as pd
+
+from pathlib import Path
+from IPython.display import Audio
+
 
 # Chapter 15: RNNs and CNNs for time series data.
 
@@ -487,3 +492,240 @@ print ("All done. Exercises are next")
 # pattern.
 
 # E8. This sounds complicated.
+
+# I would probably use a CNN on individual frames, probably extract
+# critical frames. The difficulty stems from the 2d frames, and the
+# additional dimension of time. I guess this is one additional input
+# to the CNN, where there is CNN to extract the spatial information
+# and an RNN to extract the temporal information. Can the CNN layers
+# be used in a time-distributed way?
+
+# E9. Trying to classify the SketchRNN dataset. I guess the author
+# wants the QuickDraw dataset that corresponds to the SketchRNN
+# model. I really hate such mistakes that passed through in the book.
+# I guess the pull request is still stuck, but it is available as a tfrecord.
+
+# From:
+# https://github.com/ageron/handson-ml2/blob/master/15_processing_sequences_using_rnns_and_cnns.ipynb
+
+
+def load_sketch_dataset():
+    """Loads the sketch dataset.
+
+    Call with:
+    train_set, valid_set, test_set = load_sketch_dataset()
+    """
+    DOWNLOAD_ROOT = "http://download.tensorflow.org/data/"
+    FILENAME = "quickdraw_tutorial_dataset_v1.tar.gz"
+
+    # Information about the dataset is provided here:
+    # https://github.com/googlecreativelab/quickdraw-dataset
+
+    # The magic to read this dataset comes from here:
+    # https://raw.githubusercontent.com/tensorflow/models/r1.13.0/tutorials/rnn/quickdraw/train_model.py
+    # Again, a completely opaque dataset with a magic set of instructions to get the data out.
+    
+    # Download the 1G dataset
+    filepath = keras.utils.get_file(FILENAME,
+                                    DOWNLOAD_ROOT + FILENAME,
+                                    cache_subdir="datasets/quickdraw",
+                                    extract=True)
+
+    # Get names of all the files
+    quickdraw_dir = Path(filepath).parent
+    train_files = sorted([str(path) for path in quickdraw_dir.glob("training.tfrecord-*")])
+    eval_files = sorted([str(path) for path in quickdraw_dir.glob("eval.tfrecord-*")])
+
+    # Get all the training and test category (classes) names
+    with open(quickdraw_dir / "eval.tfrecord.classes") as test_classes_file:
+        test_classes = test_classes_file.readlines()
+
+    with open(quickdraw_dir / "training.tfrecord.classes") as train_classes_file:
+        train_classes = train_classes_file.readlines()
+                    
+    # Make sure they are identical, otherwise we have a problem
+    assert train_classes == test_classes
+    # Normalize the class names, and show them
+    class_names = [name.strip().lower() for name in train_classes]
+    print(sorted(class_names))
+
+    # Return tfrecord data as sketches, lengths and the labels
+    def parse(data_batch):
+        feature_descriptions = {
+            "ink": tf.io.VarLenFeature(dtype=tf.float32),
+            "shape": tf.io.FixedLenFeature([2], dtype=tf.int64),
+            "class_index": tf.io.FixedLenFeature([1], dtype=tf.int64)
+        }
+        examples = tf.io.parse_example(data_batch, feature_descriptions)
+        flat_sketches = tf.sparse.to_dense(examples["ink"])
+        sketches = tf.reshape(flat_sketches, shape=[tf.size(data_batch), -1, 3])
+        # How long the 
+        lengths = examples["shape"][:, 0]
+        # This is what we have to predict
+        labels = examples["class_index"][:, 0]
+        return sketches, lengths, labels
+
+    # Create a tf dataset from the files
+    def quickdraw_dataset(filepaths, batch_size=32, shuffle_buffer_size=None,
+                          n_parse_threads=5, n_read_threads=5, cache=False):
+        dataset = tf.data.TFRecordDataset(filepaths,
+                                          num_parallel_reads=n_read_threads)
+        if cache:
+            dataset = dataset.cache()
+        if shuffle_buffer_size:
+            dataset = dataset.shuffle(shuffle_buffer_size)
+            dataset = dataset.batch(batch_size)
+            # Map the individual data to sketches, lengths and the class labels
+            dataset = dataset.map(parse, num_parallel_calls=n_parse_threads)
+            return dataset.prefetch(1)
+
+    # Keep the full training set, and don't split out the validation here.
+    train_set = quickdraw_dataset(train_files, shuffle_buffer_size=10000)
+
+    # Take the first five eval files for validation
+    valid_set = quickdraw_dataset(eval_files[:5])
+    # And the rest for the actual test set
+    test_set = quickdraw_dataset(eval_files[5:])
+    
+    return train_set, valid_set, test_set
+
+def draw_sketch(sketch, label=None):
+    origin = np.array([[0., 0., 0.]])
+    sketch = np.r_[origin, sketch]
+    stroke_end_indices = np.argwhere(sketch[:, -1]==1.)[:, 0]
+    coordinates = np.cumsum(sketch[:, :2], axis=0)
+    strokes = np.split(coordinates, stroke_end_indices + 1)
+    title = class_names[label.numpy()] if label is not None else "Try to guess"
+    plt.title(title)
+    plt.plot(coordinates[:, 0], -coordinates[:, 1], "y:")
+    for stroke in strokes:
+        plt.plot(stroke[:, 0], -stroke[:, 1], ".-")
+        plt.axis("off")
+        
+def draw_sketches(sketches, lengths, labels):
+    n_sketches = len(sketches)
+    n_cols = 4
+    n_rows = (n_sketches - 1) // n_cols + 1
+    plt.figure(figsize=(n_cols * 3, n_rows * 3.5))
+    for index, sketch, length, label in zip(range(n_sketches), sketches, lengths, labels):
+        plt.subplot(n_rows, n_cols, index + 1)
+        draw_sketch(sketch[:length], label)
+        plt.show()
+
+def sketch_a_few(train_set):
+    for sketches, lengths, labels in train_set.take(1):
+        draw_sketches(sketches, lengths, labels)
+
+
+def load_chorales():
+    """Load Bach Chorales dataset
+
+    Call with:
+    train_set, valid_set, test_set = load_chorales()
+    """
+    DOWNLOAD_ROOT = "https://github.com/ageron/handson-ml2/raw/master/datasets/jsb_chorales/"
+    FILENAME = "jsb_chorales.tgz"
+    filepath = keras.utils.get_file(FILENAME,
+                                    DOWNLOAD_ROOT + FILENAME,
+                                    cache_subdir="datasets/jsb_chorales",
+                                    extract=True)
+
+        
+    jsb_chorales_dir = Path(filepath).parent
+    train_files = sorted(jsb_chorales_dir.glob("train/chorale_*.csv"))
+    valid_files = sorted(jsb_chorales_dir.glob("valid/chorale_*.csv"))
+    test_files = sorted(jsb_chorales_dir.glob("test/chorale_*.csv"))
+
+    def load_chorales(filepaths):
+            return [pd.read_csv(filepath).values.tolist() for filepath in filepaths]
+
+    train_chorales = load_chorales(train_files)
+    valid_chorales = load_chorales(valid_files)
+    test_chorales = load_chorales(test_files)
+
+    # Validate the ends of the spectrum of notes in the database.
+    notes = set()
+    for chorales in (train_chorales, valid_chorales, test_chorales):
+        for chorale in chorales:
+            for chord in chorale:
+                notes |= set(chord)
+                
+    n_notes = len(notes)
+    min_note = min(notes - {0})
+    max_note = max(notes)
+
+    assert min_note == 36
+    assert max_note == 81
+                                        
+    train_set = bach_dataset(train_chorales, min_note=min_note, shuffle_buffer_size=1000)
+    valid_set = bach_dataset(valid_chorales, min_note=min_note)
+    test_set = bach_dataset(test_chorales, min_note=min_note)
+    
+    return train_set, valid_set, test_set
+    
+def notes_to_frequencies(notes):
+    # Frequency doubles when you go up one octave; there are 12 semi-tones
+    # per octave; Note A on octave 4 is 440 Hz, and it is note number 69.
+    return 2 ** ((np.array(notes) - 69) / 12) * 440
+
+def frequencies_to_samples(frequencies, tempo, sample_rate):
+    note_duration = 60 / tempo # the tempo is measured in beats per minutes
+    # To reduce click sound at every beat, we round the frequencies to try to
+    # get the samples close to zero at the end of each note.
+    frequencies = np.round(note_duration * frequencies) / note_duration
+    n_samples = int(note_duration * sample_rate)
+    time = np.linspace(0, note_duration, n_samples)
+    sine_waves = np.sin(2 * np.pi * frequencies.reshape(-1, 1) * time)
+    # Removing all notes with frequencies ≤ 9 Hz (includes note 0 = silence)
+    sine_waves *= (frequencies > 9.).reshape(-1, 1)
+    return sine_waves.reshape(-1)
+
+def chords_to_samples(chords, tempo, sample_rate):
+    freqs = notes_to_frequencies(chords)
+    freqs = np.r_[freqs, freqs[-1:]] # make last note a bit longer
+    merged = np.mean([frequencies_to_samples(melody, tempo, sample_rate)
+                     for melody in freqs.T], axis=0)
+    n_fade_out_samples = sample_rate * 60 // tempo # fade out last note
+    fade_out = np.linspace(1., 0., n_fade_out_samples)**2
+    merged[-n_fade_out_samples:] *= fade_out
+    return merged
+
+def play_chords(chords, tempo=160, amplitude=0.1, sample_rate=44100, filepath=None):
+    samples = amplitude * chords_to_samples(chords, tempo, sample_rate)
+    if filepath:
+        from scipy.io import wavfile
+        samples = (2**15 * samples).astype(np.int16)
+        wavfile.write(filepath, sample_rate, samples)
+        return display(Audio(filepath))
+    else:
+        return display(Audio(samples, rate=sample_rate))
+def create_target(batch):
+    X = batch[:, :-1]
+    Y = batch[:, 1:] # predict next note in each arpegio, at each step
+    return X, Y
+
+def preprocess(window, min_note=36):
+    window = tf.where(window == 0, window, window - min_note + 1) # shift values
+    return tf.reshape(window, [-1]) # convert to arpegio
+
+def bach_dataset(chorales, min_note, batch_size=32, shuffle_buffer_size=None,
+                 window_size=32, window_shift=16, cache=True):
+    def batch_window(window):
+        return window.batch(window_size + 1)
+
+    def to_windows(chorale):
+        dataset = tf.data.Dataset.from_tensor_slices(chorale)
+        dataset = dataset.window(window_size + 1, window_shift, drop_remainder=True)
+        return dataset.flat_map(batch_window)
+
+    chorales = tf.ragged.constant(chorales, ragged_rank=1)
+    dataset = tf.data.Dataset.from_tensor_slices(chorales)
+    dataset = dataset.flat_map(to_windows).map(preprocess)
+    if cache:
+        dataset = dataset.cache()
+    if shuffle_buffer_size:
+        dataset = dataset.shuffle(shuffle_buffer_size)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.map(create_target)
+    return dataset.prefetch(1)
+
